@@ -1,0 +1,3 @@
+[submodule "hexameter"]
+	path = hexameter
+	url = https://github.com/thomasgabor/hexameter.git
