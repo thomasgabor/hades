@@ -1,7 +1,9 @@
 -- PSYCHE system character emulation
-package.path = (string.match(arg[0], "^.*/") or "./").."hexameter/?.lua;"..package.path
+here = string.match(arg[0], "^.*/") or "./"
+package.path = here.."?.lua;"..here.."hexameter/?.lua;"..package.path
 require "hexameter"
 require "serialize"
+require "ostools"
 local show = serialize.presentation
 
 local possess = {} --unique flag
@@ -12,6 +14,13 @@ local realm, me, character
 local bodies = {}
 local souls = {}
 local allsouls = false
+
+local world, character
+
+local defaultbehavior = function() --TODO: implement at least a simple, but meaningful default behavior!
+    return function()
+    end
+end
 
 if arg[1] then
     realm = arg[1]
@@ -38,7 +47,7 @@ if arg[3] then
                 if firstchar == "-" then
                     souls[name] = avoid
                 else
-                    souls[part] = possess
+                    souls[name] = possess
                 end
             end
         end
@@ -60,12 +69,38 @@ end
 
 if arg[4] then
     io.write("::  Loading "..arg[4].."...")
-    character = dofile(arg[4])(realm, me)
+    local there = ostools.dir(arg[4])
+    local specification = dofile(arg[4])
+    if type(specification) == "function" then --assuming parameter was behavior program file
+        character = specification(realm, me)
+    elseif type(specification) == "table" then --assuming parameter was world file
+        world = specification
+        local characters = {}
+        for name,body in pairs(world) do
+            if (allsouls and not (souls[name] == avoid)) or (souls[name] == possess) then
+                if type(body.psyche) == "function" then --behavior is specified in world file directly
+                    characters[name] = body.psyche(realm, me)
+                elseif type(body.psyche) == "string" then --behavior by body-specific behavior program file
+                    characters[name] = dofile(there..body.psyche)(realm, me)
+                    --io.write(name.." specified by "..world[name].psyche.."\n")
+                else
+                    characters[name] = defaultbehavior(realm, me)
+                end
+            end
+        end
+        character = function(clock, body)
+            if characters[body] then
+                return characters[body](clock, body)
+            end
+            return defaultbehavior(realm, me)(clock, body) --this should actually never occur here
+        end
+    end
     io.write("\n")
 else
-    character = function () end
-    --TODO: implement at least a simple, but meaningful default behavior!
+    character = defaultbehavior()
 end
+
+local apocalypse = false
 
 local story = function ()
     local clock = 0
@@ -90,6 +125,14 @@ local story = function ()
                 end
             end
         end
+        if msgtype == "put" and space == "hades.signals" then
+            for _,item in ipairs(parameter) do
+                if type(item) == "table" and item.type == "apocalypse" then
+                    io.write("**  Received apocalypse signal, shutting down.\n")
+                    apocalypse = true
+                end
+            end
+        end
     end
 end
 
@@ -98,7 +141,6 @@ hexameter.init(me, story)
 io.write("::  Psyche running. Please exit with Ctrl+C.\n")
 
 hexameter.meet(realm)
-hexameter.converse()
 
 bodies = hexameter.ask("qry", realm, "report", {{}})[1].bodies --TODO: Hardcoding [1] is probably a bit hacky
 io.write("##  Recognized "..show(bodies).."\n")
@@ -110,6 +152,9 @@ for name,addresses in pairs(bodies) do
     end
 end
 
-while true do
+while not apocalypse do
     hexameter.respond(0)
 end
+
+hexameter.converse() --until zmq.LINGER works with the lua bindings, this is an acceptable solution
+hexameter.term()

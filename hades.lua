@@ -12,6 +12,7 @@ local auto = {} --unique value
 world = nil
 
 local clock = 0
+local apocalypse = false
 
 local next = {}
 
@@ -33,6 +34,41 @@ local time = function ()
             end
             table.insert(response, {bodies=bodies})
             return response
+        end
+        if msgtype == "put" and string.match(space, "^signals") then
+            for i,item in ipairs(parameter) do
+                if type(item) == "table" and item.propagate == "all" then
+                    item.propagate = nil
+                    local receivers = {}
+                    for name,body in pairs(world) do
+                        if type(body.tick) == "table" then
+                            for address,_ in pairs(body.tick) do
+                                receivers[address] = true
+                            end
+                        end
+                    end
+                    table.insert(
+                        next,
+                        function ()
+                            for receiver,_ in pairs(receivers) do
+                                print("SEND SIGNAL", receiver)
+                                hexameter.tell("put", receiver, "hades.signals", {item})
+                            end
+                        end
+                    )
+                end
+                if type(item) == "table" and type(item.propagate) == "table" then
+                    local receivers = item.propagate
+                    item.propagate = nil
+                    for _,receiver in pairs(receivers) do
+                        table.insert(next, function () hexameter.put(receiver, "hades.signals", {item}) end)
+                    end
+                end
+                if type(item) == "table" and item.type == "apocalypse" then
+                    io.write("**  Received apocalypse signal, shutting down soon...\n\n")
+                    table.insert(next, function () apocalypse = true end)
+                end
+            end
         end
         if (msgtype == "qry" or msgtype == "get") and string.match(space, "^sensors") then
             for i,item in ipairs(parameter) do
@@ -158,10 +194,8 @@ hexameter.init(me, time)
 io.write("::  Hades running. Please exit with Ctrl+C.\n")
 
 
-while true do
-    --print("$$$$", me)
+while not apocalypse do
     hexameter.respond(0)
-    --print("!!!!")
     --print("**  current friends:", serialize.literal(hexameter.friends())) --command-line option to turn this on?
     local alltocked = true
     local status = "**  [tock status] "
@@ -194,12 +228,18 @@ while true do
         end
         io.write("..  .......................................\n\n")
         next = {}
-        for t,thing in pairs(world) do
-            for address,space in pairs(thing.tick) do
-                if space then
-                    hexameter.put(address, space, {{period = clock}})
+        if not apocalypse then
+            for t,thing in pairs(world) do
+                for address,space in pairs(thing.tick) do
+                    if space then
+                        hexameter.put(address, space, {{period = clock}})
+                    end
                 end
             end
         end
     end
 end
+
+hexameter.converse() --until zmq.LINGER works with the lua bindings, this is an acceptable solution
+hexameter.term()
+io.write("**  Hades is complete, shutting down immediately.\n\n")
