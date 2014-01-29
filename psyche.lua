@@ -1,6 +1,6 @@
 -- PSYCHE system character emulation
 here = string.match(arg[0], "^.*/") or "./"
-package.path = here.."?.lua;"..here.."hexameter/?.lua;"..package.path
+package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
 require "hexameter"
 require "serialize"
 require "ostools"
@@ -15,7 +15,7 @@ local bodies = {}
 local souls = {}
 local allsouls = false
 
-local world, character
+local world
 
 local defaultbehavior = function() --TODO: implement at least a simple, but meaningful default behavior!
     return function()
@@ -70,6 +70,7 @@ end
 if arg[4] then
     io.write("::  Loading "..arg[4].."...")
     local there = ostools.dir(arg[4])
+    package.path = there.."?.lua;"..package.path
     local specification = dofile(arg[4])
     if type(specification) == "function" then --assuming parameter was behavior program file
         character = specification(realm, me)

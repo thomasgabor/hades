@@ -1,0 +1,33 @@
+declare hades
+
+//
+define hades.init function(argument)
+    focus = multiarg(argument)
+    if not focus then
+        io.write("??  Enter body to be controlled: ")
+        focus = io.read("*line")
+    end
+end
+\\
+
+//
+define hades.tock function(argument)
+    local duration = tonumber(argument)
+    hexameter.tell("put", target, "tocks", {{body=focus, duration=duration}})
+end
+\\
+
+//
+define hades.sensor function(argument)
+    local type, control = multiarg(argument)
+    local result = hexameter.ask("qry", target, "sensors", {{body=focus, type=type, control=control}})
+    print("++  ", serialize.data(result))
+end
+\\
+
+//
+define hades.motor function(argument)
+    local type, control = multiarg(argument)
+    hexameter.tell("put", target, "motors", {{body=focus, type=type, control=control}})
+end
+\\

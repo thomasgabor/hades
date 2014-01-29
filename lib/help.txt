@@ -1,0 +1,158 @@
+CHARON
+
+Charon is a tool to run software ensembles based on HADES. It can automatically start and configure HADES, PSYCHE and
+GHOST based on a HADES world file.
+
+
+
+COMMAND LINE OPTIONS:
+
+-h
+--help please
+Print this.
+
+--world
+Specify world file, can also be specified as unnamed parameter.
+
+--bodies [default: ...]
+Specify bodies you wish to start according to their repsective specification in the world file.
+[Comma-separated list of body names, "..." between commas means "all bodies", a body prefixed with a "-" is left out]
+
+--results [default: ...]
+Specify results mentioned in the world file you wish CHARON to collect.
+[Comma-separated list of result names, "..." between commas means "all", results prefixed with a "-" are left out]
+
+--addresses [default: localhost:55555,...,localhost:55595]
+Specify addresses available for CHARON to use.
+[Comma-separated list of address names, "..." between commas means all addresses between the two surrounding ones,
+addresses prefixed with a "-" are left out]
+
+--ports
+Like addresses, but only takes number which it assumes to be ports on "localhost". Is overwritten by --addresses if
+both are specified
+
+--hades
+Specific port for CHARON to run HADES at (if left out, one is chosen from the address pool defined by --addresses)
+
+--charon
+Specific port for CHARON to run on (if left out, one is chosen from the address pool defined by --addresses)
+
+--doomsday
+CHARON will end the execution of the ensemble on given time period
+
+--avatar
+CHARON will receive ticks and send tocks for given body name. Use this when adhering to a fixed doomsday is crucial, so
+that CHARON is guaranteed to stay synched up to HADES (but will also slow HADES down). Note that the body to be used
+here needs to have tocked set to 0 in the world file for this option to make sense.
+
+--hadeslog [default: /dev/null]
+--psychelog [default: /dev/null]
+Write output of the respective programs into the given file
+
+--resultlog
+Copy result output into the given file. When not specified, results will only be printed to STDOUT but not saved.
+
+--ghost
+Only start GHOST for the given body name, don't do anything else.
+
+-T
+"Dryrun", i.e. load world file but don't start any programs.
+
+-U
+"Boot up" mode: All not already (independently from CHARON) running external components marked as "recyclable" will be
+started but not stopped, so that they continue to run for further executions of CHARON.
+
+-D
+"Shut down" mode: CHARON will only stop all currently running external components marked as "recyclable", i.e. the ones
+that have probably been started by calling CHARON with the -D option.
+
+
+
+PREREQUISITES:
+
+CHARON provides a front-end to the HADES library. It depends on a working setup for (Lua) Hexameter, which depends on
+the Luarocks 0MQ bindings and naturally the 0MQ library.
+
+
+
+WORLD FILE SPECIFICATION:
+
+A "HADES world file" is a Lua file that return a table containing the world specification, hereafter called the "world
+table". This table may have a Lua metatable assigned to it, hereafter called "metaworld table". Inside the world file,
+modules found in "hades/lib" are available via Lua's require command, especially the Tartaros library. See there for
+more information.
+
+The world table consist of an entry for each participating body, i.e. system component, indexed by a unique name to be
+used by HADES to address it. Each body is defined by a table containing the following entries:
+    name:
+        repeats the name under which the body is found in the world table
+    sensors:
+        a list of sensors this body can use. A sensor is specified by a table containing the following entries:
+            type: the name of the sensor
+            class = "sensor" [this is fixed for sensors]
+            measure: a function returning an arbitray table of measurements
+        The arguments of the measure function are:
+            me: the data structure representing the body using this sensor (most importantly containing me.state)
+            world: the data structure representing the world
+            control: a table containing optional parameters specified by the sensor call
+    motors:
+        a list of motors this body can use. A motor is specified by a table containing the follwoing entries:
+            type: the name of the motor
+            class = "motor" [this is fixed for motors]
+            run: a function returning an updated data structure for the current body.
+        The arguments of the run function match those of sensors' measure function.
+    state:
+        a table containing state variables the motors are free to change
+    time:
+        a function to be called by HADES when starting a new time period. Parameters are:
+            body: the data strcuture representing the current body this function is run for
+            world: the world representation
+            clock: the now current time period
+    tick:
+        a table containing entries of the form address => space (both are strings) about which components should be
+        notified when a new time step happens for this body. In basically all cases, you'll want the components to
+        tell HADES to notify them theirselves, so leave this out in the world file.
+    tocked:
+        the amount of time periods to come that this body has already made its action for. Defaults to 0, which is
+        usually what you want. If every component answers at every time period, this alternates between 0 and 1. You
+        can set it to an integer > 0 to give other components a head start. You can set it to the special value auto or
+        "auto" to make this body be tocked at all times, i.e. HADES never waits for its reaction to the current time
+        period.
+    psyche:
+        Either a string containing the path to a Lua file returning a function or a Lua function itself. It can be
+        used by PSYCHE to run this body. This function takes two parameters and returns another function. It is called
+        once during initialisation of the world.
+            realm: address of HADES
+            me: address of the PSYCHE program running this body
+        The function returned is supposed to accept three parameters and is called for every new time step:
+            clock: The current time step.
+            body: The data strcuture of the current body this is run for.
+    obolos:
+        Additional data for CHARON to run this body autmatically. The following options are currently available:
+            results: A list of results CHARON should collect (about this body). These are specified by giving either a
+                string with the name of a sensor of the current body or giving a table containing the item to be passed
+                to the "sensors" space of HADES (i.e. a table with the entries "type" and possibly "control"; "body" is
+                filled in by CHARON automatically).
+            psyche: The address of the PSYCHE program to control this body. Use "true" to tell CHARON to assign an
+                address.
+    print:
+        a function returning a string representation of the body to use when logging an ensemble run.
+        
+If there is a metaworld table assigned, CHARON will try to read a sub-table under the entry "charon", which may contain
+the following entries:
+    addresses: provide a default value for --addresses if not specified in the call
+    ports: provide a default value for --ports if not specified in the call
+    doomsday: provide a default value for --doomsday if not specified in the call
+    ferry: a list of external components to be controlled by CHARON as part of the ensemble. Each entry of this list
+        is a table containing (some of) the following entries:
+            name: name of this component for user-friendly display
+            address: preferred address to be reserved for this component (will be enforced if ["recycle"] = true)
+            run: String or list of strings containing a shell command to run in order to start this component. May also
+                be a function returning either of these (or nil), which is given the path to the worldfile as the first
+                and the actually used address for the component as a second argument, and may compute the shell command
+                depending on those parameters or make library calls (like sending signal over HEXAMETER).
+            halt: Shell command to stop this component. Completely analogous to run (see above).
+            recycle: Set to true to mark this component as recyclable. This only works with HEXAMETER components using
+                the standard "networking" sphere. CHARON will check if it can reach the component under the given
+                address and only start it if it fails to do so. See also CHARON's command line parameters -D and -U.
+    avatar: provide a default value for --avatar if not specified in the call

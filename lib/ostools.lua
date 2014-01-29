@@ -4,20 +4,45 @@ local tostring = tostring
 local error = error
 local pairs = pairs
 local ipairs = ipairs
-local stdprint = print
 local unpack = unpack
 local print = print
 local os = os
+local io = io
 local table = table
 local tonumber = tonumber
 module(...)
+
+function expand(path)
+    return string.gsub(path, "\~", os.getenv("HOME"))
+end
 
 function dir(path)
     return string.match(path, "^.*/") or "./"
 end
 
-function call(parameters)
+function call(...)
+    local callstring = ""
+    for _,parameter in ipairs(arg) do
+        if type(parameter) == "table" then
+            for i,item in ipairs(parameter) do
+                callstring = callstring..item.." "
+            end
+        else
+            callstring = callstring..parameter.." "
+        end
+    end
+    return os.execute(callstring)
+end
 
+function usrerr(message, state)
+    io.write("##  ", string.gsub(message, "\n", "\n    "), "\n")
+    if (type(state) == "table") and #state > 0 then
+        io.write("##  The following variable values may help you fixing this error:\n")
+        for name,value in pairs(state) do
+            io.write("    ", name, " = ", value, "\n")
+        end
+    end
+    os.exit()
 end
 
 function parametrize(arguments, defaults, errorhandler)
@@ -77,7 +102,7 @@ function elect(query, foundation, by)
                 all = false
             else
                 local prefix = string.match(part, "^(.)")
-                local name = string.gsub(part, "^[-\+]", "")
+                local name = string.gsub(part, "^[-%+]", "")
                 if prefix == "-" then
                     selection[name] = false 
                 else
@@ -108,13 +133,15 @@ end
 function select(query, as, pad)
     pad = pad or function(start, stop)
         local result = {}
-        local starthost, startport = string.match(start, "^(.-)([0-9]+)$")
-        local stophost, stopport = string.match(stop, "^(.-)([0-9]+)$")
-        if not (starthost == stophost) then
-            return nil
-        end
-        for i = tonumber(startport)+1, tonumber(stopport)-1, (tonumber(startport) < tonumber(stopport) and 1 or -1) do
-            table.insert(result, starthost..i)
+        if start and stop then
+            local starthost, startport = string.match(start, "^(.-)([0-9]+)$")
+            local stophost, stopport = string.match(stop, "^(.-)([0-9]+)$")
+            if not (starthost == stophost) then
+                return nil
+            end
+            for i = tonumber(startport)+1, tonumber(stopport)-1, (tonumber(startport) < tonumber(stopport) and 1 or -1) do
+                table.insert(result, starthost..i)
+            end
         end
         return result
     end
@@ -125,43 +152,42 @@ function select(query, as, pad)
     local preselection = {}
     local padded = false
     local last = nil
+    local function save(sign, value)
+        if sign == "-" then
+            if selectionset[value] then
+                selectionset[value] = nil
+            end
+        else
+            if not selectionset[value] then
+                selectionset[value] = true
+                table.insert(preselection, value)
+            end
+        end
+    end
     for part in string.gmatch(query..",", "([^,]*),") do
         if not (part == "") then
-            if string.match(part, "^\+?\.\.\.$") then
+            if string.match(part, "^%+?%.%.%.$") then
                 padded = "+"
             elseif part == "-..." then
                 padded = "-"
             else
                 local prefix = string.match(part, "^(.)")
-                local name = string.gsub(part, "^[-\+]", "")
+                local name = string.gsub(part, "^[-%+]", "")
                 if padded then
                     for i,item in ipairs(pad(last, name) or {}) do
-                        if padded == "-" then
-                            if selectionset[item] then
-                                selectionset[item] = nil
-                            end
-                        else
-                            if not selectionset[item] then
-                                selectionset[item] = true
-                                table.insert(preselection, item)
-                            end
-                        end
+                        save(padded, item)
                     end 
                 end
-                if prefix == "-" then
-                    if selectionset[name] then
-                        selectionset[name] = nil
-                    end
-                else
-                    if not selectionset[name] then
-                        selectionset[name] = true
-                        table.insert(preselection, name)
-                    end
-                end
+                save(prefix, name)
                 last = name
                 padded = false
             end
         end
+    end
+    if padded then
+        for i,item in ipairs(pad(last, nil) or {}) do
+            save(padded, item)
+        end 
     end
     local selection = {}
     for i,item in ipairs(preselection) do

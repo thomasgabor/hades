@@ -1,5 +1,6 @@
 --HADES a discrete environment simulator
-package.path = (string.match(arg[0], "^.*/") or "./").."hexameter/?.lua;"..package.path
+here = string.match(arg[0], "^.*/") or "./"
+package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
 require "hexameter"
 require "serialize"
 local show = serialize.presentation
@@ -7,7 +8,7 @@ local show = serialize.presentation
 
 local me
 
-local auto = {} --unique value
+auto = {} --unique value
 
 world = nil
 
@@ -15,6 +16,8 @@ local clock = 0
 local apocalypse = false
 
 local next = {}
+
+local subscriptions = {}
 
 local time = function ()
     return function(msgtype, author, space, parameter)
@@ -47,12 +50,14 @@ local time = function ()
                             end
                         end
                     end
+                    for address,space in pairs(subscriptions.signals or {}) do
+                        receivers[address] = space
+                    end
                     table.insert(
                         next,
                         function ()
-                            for receiver,_ in pairs(receivers) do
-                                print("SEND SIGNAL", receiver)
-                                hexameter.tell("put", receiver, "hades.signals", {item})
+                            for receiver,space in pairs(receivers) do
+                                hexameter.tell("put", receiver, (type(space) == "string") and space or "hades.signals", {item})
                             end
                         end
                     )
@@ -67,6 +72,14 @@ local time = function ()
                 if type(item) == "table" and item.type == "apocalypse" then
                     io.write("**  Received apocalypse signal, shutting down soon...\n\n")
                     table.insert(next, function () apocalypse = true end)
+                end
+            end
+        end
+        if msgtype == "put" and string.match(space, "^subscriptions") then
+            for i,item in ipairs(parameter) do
+                if type(item) == "table" and item.to then
+                    subscriptions[item.to] = subscriptions[item.to] or {}
+                    subscriptions[item.to][item.name or author] = item.space or "hades.subscription"
                 end
             end
         end
@@ -111,8 +124,11 @@ local time = function ()
         end
         if msgtype == "put" and string.match(space, "^tocks") then --maybe implement command to set to auto
             for i,item in ipairs(parameter) do
+                --TODO: check period parameter against current period (avoids race conditions)
                 --TODO: check for non-existing item/body in world
-                world[item.body].tocked = item.duration or 1
+                if not (world[item.body].tocked == auto or world[item.body].tocked == "auto") then
+                    world[item.body].tocked = item.duration or 1
+                end
             end
         end
         return nil --making this explicit here
@@ -143,43 +159,6 @@ end
 --      - "sensors" and "motors" field match the data structure, contain only one of each "type"
 --      - all parts from "using" do actually exist
 
-sensor = function(me, type, control)
-    for _,sensor in pairs(me.sensors) do
-        if type == sensor.type then
-            return sensor.measure(me, world, control or {})
-        end
-    end
-    return nil
-end
-
-motor = function(me, type, control)
-    for _,motor in pairs(me.motors) do
-        if type == motor.type then
-            return motor.run(me, world, control or {})
-        end
-    end
-    return nil
-end
-
-can = function(me, action)
-    if action.class == "sensor" then
-        for _,sensor in pairs(me.sensors) do
-            if sensor.type == action.type then
-                return true
-            end
-        end
-        return false
-    end
-    if action.class == "motor" then
-        for _,motor in pairs(me.motors) do
-            if motor.type == action.type then
-                return true
-            end
-        end
-        return false
-    end
-    return false
-end
 
 for t,thing in pairs(world) do
     thing.sensors = thing.sensors or {}
@@ -220,7 +199,7 @@ while not apocalypse do
             action()
         end
         for t,thing in pairs(world) do
-            if not (thing.tocked == auto) then
+            if not (thing.tocked == auto or thing.tocked == "auto") then
                 thing.tocked = thing.tocked - 1
             end
             io.write("    state of "..t.."\n")
@@ -231,9 +210,14 @@ while not apocalypse do
         if not apocalypse then
             for t,thing in pairs(world) do
                 for address,space in pairs(thing.tick) do
-                    if space then
+                    if space then --TODO: check if body is not tocked for a longer time, thus probably not wanting to be ticked
                         hexameter.put(address, space, {{period = clock}})
                     end
+                end
+            end
+            for address,space in pairs(subscriptions.clock or {}) do
+                if space then
+                    hexameter.put(address, space, {{period = clock}})
                 end
             end
         end
