@@ -38,7 +38,7 @@ Specific port for CHARON to run HADES at (if left out, one is chosen from the ad
 Specific port for CHARON to run on (if left out, one is chosen from the address pool defined by --addresses)
 
 --doomsday
-CHARON will end the execution of the ensemble on given time period
+CHARON will end the execution of the ensemble on given time period. Specify 0 to never terminate the ensemble this way.
 
 --avatar
 CHARON will receive ticks and send tocks for given body name. Use this when adhering to a fixed doomsday is crucial, so
@@ -50,13 +50,16 @@ here needs to have tocked set to 0 in the world file for this option to make sen
 Write output of the respective programs into the given file
 
 --resultlog
-Copy result output into the given file. When not specified, results will only be printed to STDOUT but not saved.
+--runname
+Copy result output into the given file. When not specified, results will only be printed to STDOUT but not saved. When
+a resultlog is specified, you can also specifiy a run name, which will cause CHARON to append to the resultlog file
+(instead of writing it anew) and prepend the run name as a heading for the results to be saved.
 
 --ghost
 Only start GHOST for the given body name, don't do anything else.
 
 -T
-"Dryrun", i.e. load world file but don't start any programs.
+"Dry run", i.e. load world file but don't start any programs.
 
 -U
 "Boot up" mode: All not already (independently from CHARON) running external components marked as "recyclable" will be
@@ -65,6 +68,9 @@ started but not stopped, so that they continue to run for further executions of 
 -D
 "Shut down" mode: CHARON will only stop all currently running external components marked as "recyclable", i.e. the ones
 that have probably been started by calling CHARON with the -D option.
+
+-F
+"Free run", i.e. CHARON will ignore all specified missions.
 
 
 
@@ -133,6 +139,9 @@ used by HADES to address it. Each body is defined by a table containing the foll
                 string with the name of a sensor of the current body or giving a table containing the item to be passed
                 to the "sensors" space of HADES (i.e. a table with the entries "type" and possibly "control"; "body" is
                 filled in by CHARON automatically).
+            mission: a table (keys are ignored) of goals to be accomplished by this run of the world. Works the same way
+                as the mission entry of the metaworld (see below) except that CHARON fills in the "body" sub-entries
+                autmatically (with the name of the current body) if missing.
             psyche: The address of the PSYCHE program to control this body. Use "true" to tell CHARON to assign an
                 address.
     print:
@@ -143,6 +152,17 @@ the following entries:
     addresses: provide a default value for --addresses if not specified in the call
     ports: provide a default value for --ports if not specified in the call
     doomsday: provide a default value for --doomsday if not specified in the call
+    mission: a table (keys are ignored) of goals to be accomplished. CHARON will stop the ensemble when all fo them are
+        reached (however, doomsday has priority over the mission). Each goal is a table containing these entries:
+            body: the name of a body in the world whose sensor CHARON should use to detect the fulfilling of the goal.
+            type: the type of the sensor to check
+            control: optional parameters to be passed to the sensor.
+            goal: the aimed-at value of the sensor measurement. You can specify a function, which will be called with
+                the sensor measurement as a parameter and whose result will be used to check if the goal was achieved
+                (the function returned a non-nil, non-false value) or not (the function returned nil or false). If you
+                specify a table as a goal, CHARON will only check for inclusion, i.e. if all specified key-value-pairs
+                occur in the sensor measurement (which needs to return a table as well). If the sensor measurement
+                returns additional entries, they will be ignored.
     ferry: a list of external components to be controlled by CHARON as part of the ensemble. Each entry of this list
         is a table containing (some of) the following entries:
             name: name of this component for user-friendly display

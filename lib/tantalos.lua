@@ -1,3 +1,5 @@
+--tartaros plug-in for sensor/motor-simulation (and other deceptive phenomena)
+
 module(..., package.seeall)
 
 sensor = function(me, type, control)

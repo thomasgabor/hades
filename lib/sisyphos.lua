@@ -1,3 +1,5 @@
+--tartaros plug-in for static enviornment specification (and other recurring tasks)
+
 module(..., package.seeall)
 
 statics = {}

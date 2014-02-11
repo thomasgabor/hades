@@ -167,7 +167,12 @@ for t,thing in pairs(world) do
     thing.time = thing.time or {}
     thing.tick = thing.tick or {}
     thing.tocked = thing.tocked or 0
+    if not (type(thing.time) == "table") then
+        thing.time = {thing.time}
+    end
 end
+
+
 
 hexameter.init(me, time)
 io.write("::  Hades running. Please exit with Ctrl+C.\n")
@@ -192,7 +197,11 @@ while not apocalypse do
         io.write("..  .......................................\n")
         for t,thing in pairs(world) do
             for p,process in pairs(thing.time) do
-                process.run(thing, world, clock)
+                if type(process) == "table" then
+                    process.run(thing, world, clock)
+                elseif type(process) == "function" then
+                    process(thing, world, clock)
+                end
             end
         end
         for a,action in ipairs(next) do

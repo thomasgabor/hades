@@ -37,6 +37,7 @@ else
 end
 
 if arg[3] then
+    --TODO: Use the functionality provided in ostools here instead of duplicating the code!
     for part in string.gmatch(arg[3]..",", "([^,]*),") do
         if not (part == "") then
             if part == "..." then

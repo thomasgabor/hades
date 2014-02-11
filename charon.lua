@@ -74,12 +74,16 @@ environment = {
         parameters.resultlog and ostools.expand(parameters.resultlog)
         or charon.resultlog and ostools.expand(charon.resultlog)
         or nil,
+    runname =
+        parameters.runname
+        or nil,
     ghost =
         parameters.ghost
         or nil,
     dryrun = parameters.T or false,
     bootup = parameters.U or false,
-    shutdown = parameters.D or false
+    shutdown = parameters.D or false,
+    freerun = parameters.F or false
 }
 
 
@@ -122,8 +126,18 @@ for name,body in pairs(ostools.elect(environment.bodies, world)) do
                 elseif type(result) == "string" then
                     table.insert(resultsensors, {name=name..":"..resultname, query={type=result, body=name}})
                 else
-                    error("Charon: Cannot process requested result specification of "..name)
+                    ostools.usrerr("Charon cannot process requested result specification "..resultname.." of "..name)
                 end
+            end
+        end
+    end
+    if body.obolos and body.obolos.mission then
+        if type(body.obolos.mission) == "table" then
+            for taskname,task in pairs(body.obolos.mission) do
+                charon.mission = charon.mission or {}
+                task.name = task.name or name..":"..taskname
+                task.body = task.body or name
+                table.insert(charon.mission, task)
             end
         end
     end
@@ -156,21 +170,68 @@ local time = function ()
     return function(msgtype, author, space, parameter)
         if msgtype == "put" and (space == "hades.ticks" or space == "hades.subscription.clock") then
             for i,item in pairs(parameter) do
-                if environment.doomsday > 0 and item.period >= environment.doomsday then
+                local finished = false
+                if (not environment.freerun) and charon.mission then
+                    if not (type(charon.mission) == "table") then
+                        charon.mission = {charon.mission}
+                    end
+                    local accomplished = true
+                    for taskname,task in pairs(charon.mission) do
+                        local measurements = hexameter.ask("qry", realm, "sensors", {{body=task.body, type=task.type, control=task.control}})
+                        if type(task.goal) == "table" then
+                            local measured = false
+                            for m,measurement in pairs(measurements) do
+                                measured = true
+                                for goalname,goal in pairs(task.goal) do
+                                    if type(measurement.value) == "table" then
+                                        if not (measurement.value[goalname] == goal) then
+                                            accomplished = false
+                                        end
+                                    else
+                                        accomplished = false
+                                    end
+                                end
+                            end
+                            if not measured then
+                                accomplished = false
+                            end
+                        elseif type(task.goal) == "function" then
+                            if not task.goal(measurement.value) then
+                                accomplished = false
+                            end
+                        else
+                            if not (measurement.value == task.goal) then
+                                accomplished = false
+                            end
+                        end
+                    end
+                    if accomplished then
+                        finished = true
+                    end
+                end
+                if finished or (environment.doomsday > 0 and item.period >= environment.doomsday) then
                     io.write("**  Charon reports:\n")
-                    local resultlog, err = environment.resultlog and io.open(environment.resultlog, "w")
+                    local resultlog, err = environment.resultlog and io.open(environment.resultlog, environment.runname and "a" or "w")
+                    if environment.runname then
+                        resultlog:write("# RUN ", (environment.runname == "..." and os.time() or environment.runname), "\n")
+                    end
                     local measured = false
                     for r,resultsensor in pairs(resultsensors) do
                         measured = true
                         local measurements = hexameter.ask("qry", realm, "sensors", {resultsensor.query})
                         io.write("        ", resultsensor.name, ": ")
                         if resultlog then resultlog:write(resultsensor.name, ",\t") end
-                        local first = true
                         for m,measurement in pairs(measurements) do
-                            for resultname,resultvalue in pairs(measurement.value) do
-                                io.write((not first and ", " or ""), resultname, "=", resultvalue)
-                                if resultlog then resultlog:write((not first and ", " or ""), resultname, "=", resultvalue) end
-                                first = false
+                            local first = true
+                            if type(measurement.value) == "table" then
+                                for resultname,resultvalue in pairs(measurement.value) do
+                                    io.write((not first and ", " or ""), resultname, "=", resultvalue)
+                                    if resultlog then resultlog:write((not first and ", " or ""), resultname, "=", resultvalue) end
+                                    first = false
+                                end
+                            else
+                                io.write(measurement.value)
+                                if resultlog then resultlog:write(measurement.value) end
                             end
                         end
                         io.write("\n")
@@ -179,7 +240,7 @@ local time = function ()
                     if not measured then
                         io.write("        NOTHING (no results specified)\n")
                     end
-                    if resultlog then resultlog:close() end
+                    if resultlog then resultlog:write("\n"); resultlog:close() end
                     hexameter.put(realm, "signals", {{type="apocalypse", propagate="all"}})
                 end
                 if environment.avatar then
