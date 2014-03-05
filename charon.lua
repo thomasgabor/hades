@@ -293,11 +293,11 @@ end
 for psycheaddress,psychebodies in pairs(psycheinstances) do
     if type(psycheaddress) == "string" then
         io.write("::  Starting PSYCHE for "..psychebodies.." on "..psycheaddress.."\n")
-        ostools.call("lua", here.."psyche.lua", realm, psycheaddress, psychebodies, it, "> "..environment.psychelog, "&")
+        ostools.call("lua", here.."psyche.lua", realm, psycheaddress, psychebodies, it, "--prefix", "["..psycheaddress.."]", "> "..environment.psychelog, "&")
     elseif psycheaddress == true then
         local adhocaddress = address()
         io.write("::  Starting PSYCHE for "..psychebodies.." on "..adhocaddress.."\n")
-        ostools.call("lua", here.."psyche.lua", realm, adhocaddress, psychebodies, it, "> "..environment.psychelog, "&")
+        ostools.call("lua", here.."psyche.lua", realm, adhocaddress, psychebodies, it, "--prefix", "["..adhocaddress.."]", "> "..environment.psychelog, "&")
     end
 end
 

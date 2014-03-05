@@ -6,8 +6,8 @@ require "serialize"
 require "ostools"
 local show = serialize.presentation
 
-local possess = {} --unique flag
-local avoid = {}   --unique flag
+local possess = true
+local avoid = false
 
 local realm, me, character
 
@@ -22,37 +22,60 @@ local defaultbehavior = function() --TODO: implement at least a simple, but mean
     end
 end
 
-if arg[1] then
-    realm = arg[1]
+local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
+
+local environment = {
+    realm =
+        parameters.realm
+        or parameters.hades
+        or parameters[1],
+    psyche =
+        parameters.me
+        or parameters.psyche
+        or parameters[2],
+    bodies =
+        parameters.bodies
+        or parameters[3],
+    character =
+        parameters.character
+        or parameters.behavior
+        or parameters.world
+        or parameters[4],
+    prefix =
+        parameters.prefix
+}
+
+local function write(content)
+    if content then
+        if environment.prefix then
+            io.write(environment.prefix, "  ", content)
+        else
+            io.write(content)
+        end
+    end
+end
+
+local function writeln(content)
+    write(content)
+    io.write("\n")
+end
+
+if environment.realm then
+    realm = environment.realm
 else
     io.write("??  Enter an address:port for the world simulator: ")
     realm = io.read("*line")
 end
 
-if arg[2] then
-    me = arg[2]
+if environment.psyche then
+    me = environment.psyche
 else
     io.write("??  Enter an address:port for this component: ")
     me = io.read("*line")
 end
 
-if arg[3] then
-    --TODO: Use the functionality provided in ostools here instead of duplicating the code!
-    for part in string.gmatch(arg[3]..",", "([^,]*),") do
-        if not (part == "") then
-            if part == "..." then
-                allsouls = true
-            else
-                local firstchar = string.match(part, "^(.)")
-                local name = string.gsub(part, "^[-\+]", "")
-                if firstchar == "-" then
-                    souls[name] = avoid
-                else
-                    souls[name] = possess
-                end
-            end
-        end
-    end
+if environment.bodies then
+    allsouls, souls = ostools.elect(environment.bodies)
     local bodystr = ""
     local beginning = true
     bodystr = bodystr..(allsouls and "all bodies except " or "bodies ")
@@ -62,14 +85,14 @@ if arg[3] then
             beginning = false
         end
     end
-    io.write("::  Controlling "..bodystr..".\n")
+    write("::  Controlling "..bodystr..".\n")
 else
     allsouls = true
-    io.write("::  Controlling all bodies by default.\n")
+    write("::  Controlling all bodies by default.\n")
 end
 
-if arg[4] then
-    io.write("::  Loading "..arg[4].."...")
+if parameters[4] then
+    writeln("::  Loading "..arg[4].."...")
     local there = ostools.dir(arg[4])
     package.path = there.."?.lua;"..package.path
     local specification = dofile(arg[4])
@@ -97,7 +120,7 @@ if arg[4] then
             return defaultbehavior(realm, me)(clock, body) --this should actually never occur here
         end
     end
-    io.write("\n")
+    write("\n")
 else
     character = defaultbehavior()
 end
@@ -114,13 +137,13 @@ local story = function ()
             end
             if newclock > clock then
                 clock = newclock
-                print()
-                print()
-                print("::  Entering time period #"..clock)
+                writeln()
+                writeln()
+                writeln("::  Entering time period #"..clock)
                 for name,addresses in pairs(bodies) do
                     if (allsouls and not (souls[name] == avoid)) or (souls[name] == possess) then
-                        print()
-                        print("::  Computing "..name)
+                        writeln()
+                        writeln("::  Computing "..name)
                         character(clock, name)
                         hexameter.tell("put", realm, "tocks", {{body=name}})
                     end
@@ -130,7 +153,7 @@ local story = function ()
         if msgtype == "put" and space == "hades.signals" then
             for _,item in ipairs(parameter) do
                 if type(item) == "table" and item.type == "apocalypse" then
-                    io.write("**  Received apocalypse signal, shutting down.\n")
+                    write("**  Received apocalypse signal, shutting down.\n")
                     apocalypse = true
                 end
             end
@@ -140,12 +163,12 @@ end
 
 hexameter.init(me, story)
 
-io.write("::  Psyche running. Please exit with Ctrl+C.\n")
+write("::  Psyche running. Please exit with Ctrl+C.\n")
 
 hexameter.meet(realm)
 
 bodies = hexameter.ask("qry", realm, "report", {{}})[1].bodies --TODO: Hardcoding [1] is probably a bit hacky
-io.write("##  Recognized "..show(bodies).."\n")
+write("##  Recognized "..show(bodies).."\n")
 
 for name,addresses in pairs(bodies) do
     if (allsouls and not (souls[name] == avoid)) or (souls[name] == possess) then

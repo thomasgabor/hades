@@ -3,6 +3,7 @@ here = string.match(arg[0], "^.*/") or "./"
 package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
 require "hexameter"
 require "serialize"
+require "ostools"
 local show = serialize.presentation
 
 
@@ -135,16 +136,29 @@ local time = function ()
     end
 end
 
-if arg[1] then
-    me = arg[1]
+local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
+
+local environment = {
+    realm =
+        parameters.me
+        or parameters.realm
+        or parameters.hades
+        or parameters[1],
+    world =
+        parameters.world
+        or parameters[2]
+}
+
+if environment.realm then
+    me = environment.realm
 else
     io.write("??  Enter an address:port for this component: ")
     me = io.read("*line")
 end
 
-if arg[2] then
-    io.write("::  Loading "..arg[2].."...")
-    world = dofile(arg[2])
+if environment.world then
+    io.write("::  Loading "..environment.world.."...")
+    world = dofile(environment.world)
     io.write("\n")
 else
     world = dofile("./scenarios/magicbrick/world.lua")
