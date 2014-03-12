@@ -58,6 +58,9 @@ a resultlog is specified, you can also specifiy a run name, which will cause CHA
 --ghost
 Only start GHOST for the given body name, don't do anything else.
 
+--hexameter:* [i.e. --hexameter:socketcache 42]
+Set options to be passed on to the Hexameter protocol running on CHARON, HADES and PSYCHE.
+
 -T
 "Dry run", i.e. load world file but don't start any programs.
 
@@ -175,4 +178,6 @@ the following entries:
             recycle: Set to true to mark this component as recyclable. This only works with HEXAMETER components using
                 the standard "networking" sphere. CHARON will check if it can reach the component under the given
                 address and only start it if it fails to do so. See also CHARON's command line parameters -D and -U.
+    hexameter: a table of options to be passed on to the Hexameter protocol of CHARON, HADES and PSYCHE. Acts as a
+        default value if none of the --hexameter:* parameters are provided.
     avatar: provide a default value for --avatar if not specified in the call
