@@ -59,11 +59,11 @@ function parametrize(arguments, defaults, errorhandler)
             parameters[munchedby] = argument
             munchedby = false
         else
-            local name, value = string.match(argument, "^%-%-([a-zA-Z][a-zA-Z0-9%-]*)=(.*)$") --forme: --world=foo.lua
+            local name, value = string.match(argument, "^%-%-([a-zA-Z][a-zA-Z0-9%-:]*)=(.*)$") --forme: --world=foo.lua
             if name then
                 parameters[name] = value
             else
-                name = string.match(argument, "^%-%-([a-zA-Z][a-zA-Z0-9%-]*)$") --forme: --world foo.lua
+                name = string.match(argument, "^%-%-([a-zA-Z][a-zA-Z0-9%-:]*)$") --forme: --world foo.lua
                 if name then
                     munchedby = name
                 else
@@ -87,7 +87,30 @@ function parametrize(arguments, defaults, errorhandler)
     if munchedby then
         if not errorhandler(#arguments, munchedby, "value expected but not given") then return nil end
     end
+    for key,value in pairs(parameters) do
+        local group, name = string.match(key, "^([a-zA-Z0-9%-]+):([a-zA-Z0-9%-:]*)$")
+        if group then
+            if not parameters[group] then
+                parameters[group] = {}
+            end
+            if type(parameters[group]) == "table" then
+                parameters[group][name] = value
+            end
+        end
+    end
     return parameters
+end
+
+function group(name, parameters)
+    local arguments = {}
+    for key,val in pairs(parameters) do
+        table.insert(arguments, "--"..name..":"..key.."="..val)
+    end
+    return arguments
+end
+
+function argumentize()
+    --TODO: write function that turns parameter tables back into lists of argument strings that can be passed to ostools.call()
 end
 
 function elect(query, foundation, by)

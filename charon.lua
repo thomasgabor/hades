@@ -16,6 +16,10 @@ if parameters.H or parameters.h or parameters.help then
     os.exit()
 end
 
+if parameters.echo then
+    io.write(parameters.echo, "\n")
+end
+
 it= parameters.world and ostools.expand(parameters.world)
     or parameters[1] and ostools.expand(parameters[1])
     or ostools.usrerr("Please pass a world file as a parameter to Charon")
@@ -79,6 +83,11 @@ environment = {
         or nil,
     ghost =
         parameters.ghost
+        or nil,
+    hexameter =
+        parameters.hexameter
+        or parameters.hex
+        or charon.hexameter
         or nil,
     dryrun = parameters.T or false,
     bootup = parameters.U or false,
@@ -260,7 +269,7 @@ end
 
 
 local me = address(environment.charon)
-hexameter.init(me, time)
+hexameter.init(me, time, nil, nil, environment.hexameter)
 io.write("**  Charon is listening on "..me.."\n")
 
 
@@ -279,7 +288,7 @@ end
 
 
 io.write("::  Starting HADES on "..realm.."\n")
-ostools.call("lua", here.."hades.lua", realm, it, "> "..environment.hadeslog, "&")
+ostools.call("lua", here.."hades.lua", realm, it, ostools.group("hexameter", environment.hexameter), "> "..environment.hadeslog, "&")
 hexameter.ask("qry", realm, "net.life", {{answer=42}}) --wait for hades to be online
 
 if environment.avatar then
@@ -293,11 +302,11 @@ end
 for psycheaddress,psychebodies in pairs(psycheinstances) do
     if type(psycheaddress) == "string" then
         io.write("::  Starting PSYCHE for "..psychebodies.." on "..psycheaddress.."\n")
-        ostools.call("lua", here.."psyche.lua", realm, psycheaddress, psychebodies, it, "--prefix", "["..psycheaddress.."]", "> "..environment.psychelog, "&")
+        ostools.call("lua", here.."psyche.lua", realm, psycheaddress, psychebodies, it, "--prefix", "["..psycheaddress.."]", ostools.group("hexameter", environment.hexameter), "> "..environment.psychelog, "&")
     elseif psycheaddress == true then
         local adhocaddress = address()
         io.write("::  Starting PSYCHE for "..psychebodies.." on "..adhocaddress.."\n")
-        ostools.call("lua", here.."psyche.lua", realm, adhocaddress, psychebodies, it, "--prefix", "["..adhocaddress.."]", "> "..environment.psychelog, "&")
+        ostools.call("lua", here.."psyche.lua", realm, adhocaddress, psychebodies, it, "--prefix", "["..adhocaddress.."]", ostools.group("hexameter", environment.hexameter), "> "..environment.psychelog, "&")
     end
 end
 
@@ -339,7 +348,7 @@ while not apocalypse do
     hexameter.respond(0)
 end
 
-for s,step in ipairs(charon.ferry or {}) do
+for s,step in ipairs(charon.ferry or {}) do --TODO: reverse that list before shutting down components!
     if step.halt and not step.recycled and not (environment.bootup and step.recycle) then
         step.halt = step.halt(there, step.address)
         if step.halt then

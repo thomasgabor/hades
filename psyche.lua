@@ -42,7 +42,10 @@ local environment = {
         or parameters.world
         or parameters[4],
     prefix =
-        parameters.prefix
+        parameters.prefix,
+    hexameter =
+        parameters.hexameter
+        or parameters.hex
 }
 
 local function write(content)
@@ -161,7 +164,7 @@ local story = function ()
     end
 end
 
-hexameter.init(me, story)
+hexameter.init(me, story, nil, nil, environment.hexameter)
 
 write("::  Psyche running. Please exit with Ctrl+C.\n")
 

@@ -146,8 +146,15 @@ local environment = {
         or parameters[1],
     world =
         parameters.world
-        or parameters[2]
+        or parameters[2],
+    hexameter =
+        parameters.hexameter
+        or parameters.hex
 }
+
+for key,val in pairs(environment.hexameter) do
+    print(key, val)
+end
 
 if environment.realm then
     me = environment.realm
@@ -188,7 +195,7 @@ end
 
 
 
-hexameter.init(me, time)
+hexameter.init(me, time, nil, nil, environment.hexameter)
 io.write("::  Hades running. Please exit with Ctrl+C.\n")
 
 

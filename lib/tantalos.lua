@@ -1,8 +1,14 @@
 --tartaros plug-in for sensor/motor-simulation (and other deceptive phenomena)
 
-module(..., package.seeall)
+local T = {}
 
-sensor = function(me, type, control)
+local world
+
+function T.init(tartaros, worldtable)
+    world = worldtable
+end
+
+function T.sensor(me, type, control)
     for _,sensor in pairs(me.sensors) do
         if type == sensor.type then
             return sensor.measure(me, world, control or {})
@@ -11,7 +17,7 @@ sensor = function(me, type, control)
     return nil
 end
 
-motor = function(me, type, control)
+function T.motor(me, type, control)
     for _,motor in pairs(me.motors) do
         if type == motor.type then
             return motor.run(me, world, control or {})
@@ -20,7 +26,7 @@ motor = function(me, type, control)
     return nil
 end
 
-can = function(me, action)
+function T.can(me, action)
     if action.class == "sensor" then
         for _,sensor in pairs(me.sensors) do
             if sensor.type == action.type then
@@ -39,3 +45,5 @@ can = function(me, action)
     end
     return false
 end
+
+return T
