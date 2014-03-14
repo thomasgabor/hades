@@ -185,4 +185,4 @@ while not apocalypse do
 end
 
 hexameter.converse() --until zmq.LINGER works with the lua bindings, this is an acceptable solution
-hexameter.term()
+--hexameter.term()

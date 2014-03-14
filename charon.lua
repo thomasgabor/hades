@@ -310,7 +310,6 @@ for psycheaddress,psychebodies in pairs(psycheinstances) do
     end
 end
 
-
 for s,step in ipairs(charon.ferry or {}) do
     local component = nil
     if type(step.address) == "string" then
@@ -359,5 +358,6 @@ end
 
 
 hexameter.converse() --until zmq.LINGER works with the lua bindings, this is an acceptable solution
-hexameter.term()
+--hexameter.term() --uncomment this and watch 0MQ hang, then segfault (!) when killed
+io.write("##  Due to a 0MQ issue, please kill Charon manually if necessary.\n")
 io.write("**  Charon shut down.\n")
