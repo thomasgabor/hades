@@ -31,6 +31,7 @@ function call(...)
             callstring = callstring..parameter.." "
         end
     end
+    --print("!!", callstring)
     return os.execute(callstring)
 end
 
@@ -103,8 +104,12 @@ end
 
 function group(name, parameters)
     local arguments = {}
-    for key,val in pairs(parameters) do
-        table.insert(arguments, "--"..name..":"..key.."="..val)
+    for key,val in pairs(parameters or {}) do
+        if name then
+            table.insert(arguments, "--"..name..":"..key.."="..val)
+        else
+            table.insert(arguments, "--"..key.."="..val)
+        end
     end
     return arguments
 end

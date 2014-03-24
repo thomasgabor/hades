@@ -13,11 +13,30 @@ auto = {} --unique value
 
 world = nil
 
+local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
+
+local environment = {
+    realm =
+        parameters.me
+        or parameters.realm
+        or parameters.hades
+        or parameters[1],
+    world =
+        parameters.world
+        or parameters[2],
+    hexameter =
+        parameters.hexameter
+        or parameters.hex,
+    construction =
+        tonumber(parameters.construction)
+        or parameters.C and 1
+        or 0
+}
+
+
 local clock = 0
 local apocalypse = false
-
 local next = {}
-
 local subscriptions = {}
 
 local time = function ()
@@ -132,25 +151,16 @@ local time = function ()
                 end
             end
         end
+        if msgtype == "put" and string.match(space, "^construction$") then
+            for i,item in ipairs(parameter) do
+                environment.construction = environment.construction - (item.steps or 1)
+                table.insert(response, {missing=environment.construction, steps=item.steps or 1})
+            end
+            return response
+        end
         return nil --making this explicit here
     end
 end
-
-local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
-
-local environment = {
-    realm =
-        parameters.me
-        or parameters.realm
-        or parameters.hades
-        or parameters[1],
-    world =
-        parameters.world
-        or parameters[2],
-    hexameter =
-        parameters.hexameter
-        or parameters.hex
-}
 
 for key,val in pairs(environment.hexameter) do
     print(key, val)
@@ -201,6 +211,9 @@ io.write("::  Hades running. Please exit with Ctrl+C.\n")
 
 while not apocalypse do
     hexameter.respond(0)
+    while environment.construction > 0 do
+        hexameter.respond(0)
+    end
     --print("**  current friends:", serialize.literal(hexameter.friends())) --command-line option to turn this on?
     local alltocked = true
     local status = "**  [tock status] "

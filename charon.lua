@@ -89,6 +89,10 @@ environment = {
         or parameters.hex
         or charon.hexameter
         or nil,
+    hadesparameters =
+        parameters.hadesparameters
+        or parameters.hadesparams
+        or nil,
     dryrun = parameters.T or false,
     bootup = parameters.U or false,
     shutdown = parameters.D or false,
@@ -288,7 +292,7 @@ end
 
 
 io.write("::  Starting HADES on "..realm.."\n")
-ostools.call("lua", here.."hades.lua", realm, it, ostools.group("hexameter", environment.hexameter), "> "..environment.hadeslog, "&")
+ostools.call("lua", here.."hades.lua", realm, it, ostools.group("hexameter", environment.hexameter), ostools.group(nil, environment.hadesparameters), "> "..environment.hadeslog, "&")
 hexameter.ask("qry", realm, "net.life", {{answer=42}}) --wait for hades to be online
 
 if environment.avatar then
