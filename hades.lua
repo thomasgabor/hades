@@ -12,12 +12,14 @@ local me
 auto = {} --unique value
 
 world = nil
+metaworld = nil
 
 local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
 
 local environment = {
     realm =
-        parameters.me
+        parameters.name
+        or parameters.me
         or parameters.realm
         or parameters.hades
         or parameters[1],
@@ -40,6 +42,7 @@ local next = {}
 local subscriptions = {}
 
 local time = function ()
+    local runresults = {}
     return function(msgtype, author, space, parameter)
         local response = {}
         if (msgtype == "qry" or msgtype == "get") and string.match(space, "^state") then
@@ -158,6 +161,32 @@ local time = function ()
             end
             return response
         end
+        if space == "remote" then
+            for i,item in ipairs(parameter) do
+                if metaworld.remote and item.call then
+                    if metaworld.remote[item.call] then
+                        table.insert(response, {result=metaworld.remote[item.call](item), origin=item})
+                    elseif metaworld.remote["*"] then
+                        table.insert(response, {result=metaworld.remote["*"](item), origin=item})
+                    end                        
+                end
+            end
+            return response
+        end
+        if space == "results" then
+            if msgtype == "put" then
+                for i,item in ipairs(parameter) do
+                    if item.name then
+                        runresults[item.name] = item.value
+                    end
+                end
+            elseif msgtype == "qry" then
+                if item.name and runresults[item.name] then
+                    table.insert(response, runresults[item.name] or {})
+                end
+            end
+            return response
+        end
         return nil --making this explicit here
     end
 end
@@ -176,9 +205,11 @@ end
 if environment.world then
     io.write("::  Loading "..environment.world.."...")
     world = dofile(environment.world)
+    metaworld = getmetatable(world) or {}
     io.write("\n")
 else
     world = dofile("./scenarios/magicbrick/world.lua")
+    metaworld = {}
     io.write("::  Using default \"magic brick world\".\n")
 end
 

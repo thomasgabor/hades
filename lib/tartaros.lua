@@ -92,6 +92,24 @@ function T.load(name, importing, params)
     return inhabitants[name]
 end
 
+function T.publish(name, procedure)
+    metaworld.remote = metaworld.remote or {}
+    metaworld.remote[name] = procedure
+    return procedure
+    
+end
+
+function T.publishloaded(name, ...)
+    local added = {}
+    for _,member in pairs(arg or inhabitants[name] or {}) do
+        if inhabitants[name][member] then
+            T.publish(name.."."..member, inhabitants[name][member])
+            added[name.."."..member] = true
+        end
+    end
+    return added
+end
+
 function T.unload(name, imported, params)
     if inhabitants[name] then
         local inhabitant = inhabitants[name]

@@ -53,7 +53,8 @@ environment = {
         or charon.hades
         or nil,
     charon =
-        parameters.charon
+        parameters.name
+        or parameters.charon
         or charon.charon
         or charon.me
         or charon.port
@@ -232,6 +233,7 @@ local time = function ()
                     for r,resultsensor in pairs(resultsensors) do
                         measured = true
                         local measurements = hexameter.ask("qry", realm, "sensors", {resultsensor.query})
+                        hexameter.tell("put", realm, "results", {name=resultsensor.name, value=measurements})
                         io.write("        ", resultsensor.name, ": ")
                         if resultlog then resultlog:write(resultsensor.name, ",\t") end
                         for m,measurement in pairs(measurements) do

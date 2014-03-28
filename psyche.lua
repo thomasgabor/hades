@@ -30,7 +30,8 @@ local environment = {
         or parameters.hades
         or parameters[1],
     psyche =
-        parameters.me
+        parameters.name
+        or parameters.me
         or parameters.psyche
         or parameters[2],
     bodies =
