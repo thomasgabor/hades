@@ -46,7 +46,10 @@ local environment = {
         parameters.prefix,
     hexameter =
         parameters.hexameter
-        or parameters.hex
+        or parameters.hex,
+    tartaros =
+        parameters.tartaros
+        or parameters.tar
 }
 
 local function write(content)

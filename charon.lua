@@ -11,13 +11,9 @@ local show = serialize.presentation
 local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
 
 if parameters.H or parameters.h or parameters.help then
-    ostools.call("cat", here.."lib/help.txt")
+    ostools.call("cat", here.."help/charon.txt")
     io.write("\n")
     os.exit()
-end
-
-if parameters.echo then
-    io.write(parameters.echo, "\n")
 end
 
 it= parameters.world and ostools.expand(parameters.world)
@@ -51,7 +47,11 @@ environment = {
     hades =
         parameters.hades
         or charon.hades
-        or nil,
+        or {},
+    psyche =
+        parameters.psyche
+        or charon.psyche
+        or {},
     charon =
         parameters.name
         or parameters.charon
@@ -69,11 +69,15 @@ environment = {
         or 0,
     hadeslog =
         parameters.hadeslog
+        or type(parameters.hades) == "table" and parameters.hades.log
         or charon.hadeslog
+        or type(charon.hades) == "table" and charon.hades.log
         or "/dev/null",
     psychelog =
         parameters.psychelog
+        or type(parameters.psyche) == "table" and parameters.psyche.log
         or charon.psychelog
+        or type(charon.psyche) == "table" and charon.psyche.log
         or "/dev/null",
     resultlog =
         parameters.resultlog and ostools.expand(parameters.resultlog)
@@ -90,15 +94,21 @@ environment = {
         or parameters.hex
         or charon.hexameter
         or nil,
-    hadesparameters =
-        parameters.hadesparameters
-        or parameters.hadesparams
+    tartaros =
+        parameters.tartaros
+        or parameters.tar
+        or charon.tartaros
         or nil,
     dryrun = parameters.T or false,
     bootup = parameters.U or false,
     shutdown = parameters.D or false,
-    freerun = parameters.F or false
+    freerun = parameters.F or false,
+    servermode = parameters.S or false
 }
+
+if type(environment.hades) == "string" then
+    environment.hades = {name=environment.hades}
+end
 
 
 local addresspool = environment.addresses
@@ -124,6 +134,7 @@ local function address(preferred)
 end
 
 
+--analyze world file
 local psycheinstances = {}
 local resultsensors = {}
 for name,body in pairs(ostools.elect(environment.bodies, world)) do
@@ -158,6 +169,8 @@ for name,body in pairs(ostools.elect(environment.bodies, world)) do
 end
 resultsensors = ostools.elect(environment.results, resultsensors, function(_, sensor) return sensor.name end)
 
+
+--start GHOST if specified
 if environment.ghost then
     local ghostaddress = address()
     io.write("::  Only starting GHOST on ", ghostaddress, "\n")
@@ -165,6 +178,8 @@ if environment.ghost then
     os.exit()
 end
 
+
+--start run of Charon
 io.write("**  Charon will collect the following results: ")
 local first = true
 for r, resultsensor in pairs(resultsensors) do
@@ -178,8 +193,12 @@ if environment.dryrun then
     os.exit()
 end
 
-local realm = address(environment.hades)
+
+--specify Charon's reactive behavior
+local realm = address(environment.hades.name)
 local apocalypse = false
+local continue = environment.servermode
+local revive = false
 local time = function ()
     return function(msgtype, author, space, parameter)
         if msgtype == "put" and (space == "hades.ticks" or space == "hades.subscription.clock") then
@@ -270,13 +289,22 @@ local time = function ()
                 end
             end
         end
+        if space == "hades.subscription.revivification" then
+            io.write("**  Charon noticed revivification of HADES.\n")
+            revive = true
+        end
+        if space == "hades.subscription.termination" then
+            io.write("**  Charon noticed termination of HADES.\n")
+            continue = false
+        end
     end
 end
 
 
+--set up Charon's network communication
 local me = address(environment.charon)
 hexameter.init(me, time, nil, nil, environment.hexameter)
-io.write("**  Charon is listening on "..me.."\n")
+io.write("**  Charon is listening on "..me..(environment.servermode and " in server mode " or "").."\n")
 
 
 if environment.shutdown then
@@ -293,73 +321,118 @@ if environment.shutdown then
 end
 
 
-io.write("::  Starting HADES on "..realm.."\n")
-ostools.call("lua", here.."hades.lua", realm, it, ostools.group("hexameter", environment.hexameter), ostools.group(nil, environment.hadesparameters), "> "..environment.hadeslog, "&")
+--start HADES
+io.write("::  Starting HADES on "..realm..(environment.servermode and " in server mode " or "").."\n")
+ostools.call("lua",
+    here.."hades.lua",
+    realm,
+    it,
+    environment.servermode and "-S",
+    ostools.group("hexameter", environment.hexameter),
+    ostools.group(nil, environment.hades),
+    "> "..environment.hadeslog,
+    "&"
+)
 hexameter.ask("qry", realm, "net.life", {{answer=42}}) --wait for hades to be online
-
-if environment.avatar then
-    hexameter.put(realm, "ticks", {{body=environment.avatar, soul=me}})
-    hexameter.put(realm, "tocks", {{body=environment.avatar}})
-else
-    hexameter.put(realm, "subscriptions", {{to="clock", space="hades.subscription.clock"}, {to="signals", space="hades.subscription.signals"}})
-end
+hexameter.put(realm, "subscriptions", {
+    {to="revivification", space="hades.subscription.revivification"},
+    {to="termination", space="hades.subscription.termination"},
+    {to="signals", space="hades.subscription.signals"}
+})
 
 
-for psycheaddress,psychebodies in pairs(psycheinstances) do
-    if type(psycheaddress) == "string" then
-        io.write("::  Starting PSYCHE for "..psychebodies.." on "..psycheaddress.."\n")
-        ostools.call("lua", here.."psyche.lua", realm, psycheaddress, psychebodies, it, "--prefix", "["..psycheaddress.."]", ostools.group("hexameter", environment.hexameter), "> "..environment.psychelog, "&")
-    elseif psycheaddress == true then
-        local adhocaddress = address()
-        io.write("::  Starting PSYCHE for "..psychebodies.." on "..adhocaddress.."\n")
-        ostools.call("lua", here.."psyche.lua", realm, adhocaddress, psychebodies, it, "--prefix", "["..adhocaddress.."]", ostools.group("hexameter", environment.hexameter), "> "..environment.psychelog, "&")
+--start experiment lifecycle
+local firstrun = true
+while firstrun or continue do
+    --register Charon with HADES
+    if environment.avatar then
+        hexameter.put(realm, "ticks", {{body=environment.avatar, soul=me}})
+        hexameter.put(realm, "tocks", {{body=environment.avatar}})
+    else
+        hexameter.put(realm, "subscriptions", {{to="clock", space="hades.subscription.clock"}})
     end
-end
 
-for s,step in ipairs(charon.ferry or {}) do
-    local component = nil
-    if type(step.address) == "string" then
-        if step.recycle and hexameter.wonder("qry", step.address, "net.life", {{charon="wondering"}}) then
-            component = step.address
-            step.recycled = true
-        elseif step.recycle then
-            component = step.address --TODO: Parse for recycle component addresses at the beginning of CHARON and exlcude these from the address pool
-        else
-            component = address(step.address)
+    --start PSYCHE
+    for psycheaddress,psychebodies in pairs(psycheinstances) do
+        local actualaddress = nil
+        if type(psycheaddress) == "string" then
+            actualaddress = psycheaddress
+        elseif psycheaddress == true then
+            actualaddress = address()
+        end
+        if actualaddress then
+            io.write("::  Starting PSYCHE for "..psychebodies.." on "..actualaddress.."\n")
+            ostools.call("lua",
+                here.."psyche.lua",
+                realm,
+                actualaddress,
+                psychebodies,
+                it,
+                "--prefix", "["..actualaddress.."]",
+                ostools.group("hexameter", environment.hexameter),
+                ostools.group(nil, environment.psyche),
+                "> "..environment.psychelog,
+                "&"
+            )
+        end
+    end
+    
+    --run "ferry" external processes that are part of the world specification
+    for s,step in ipairs(charon.ferry or {}) do
+        local component = nil
+        if type(step.address) == "string" then
+            if step.recycle and hexameter.wonder("qry", step.address, "net.life", {{charon="wondering"}}) then
+                component = step.address
+                step.recycled = true
+            elseif step.recycle then
+                component = step.address --TODO: Parse for recycle component addresses at the beginning of CHARON and exlcude these from the address pool
+            else
+                component = address(step.address)
+                step.address = component
+            end
+        elseif step.address == true then
+            component = address()
             step.address = component
         end
-    elseif step.address == true then
-        component = address()
-        step.address = component
-    end
-    if step.recycled then
-        io.write("**  Using already running ", step.name and step.name or "custom step "..s, " on ", step.address or "???", "\n")
-    else
-        if type(step.run) == "function" then
-            if component then
-                step.run = step.run(there, component)
-            else
-                step.run = step.run(there)
+        if step.recycled then
+            io.write("**  Using already running ", step.name and step.name or "custom step "..s, " on ", step.address or "???", "\n")
+        else
+            if type(step.run) == "function" then
+                if component then
+                    step.run = step.run(there, component)
+                else
+                    step.run = step.run(there)
+                end
+            end
+            io.write("::  Running ", step.name and step.name or "custom step "..s, component and " on "..component or "", "\n")
+            if step.run then
+                ostools.call(step.run, "&")
             end
         end
-        io.write("::  Running ", step.name and step.name or "custom step "..s, component and " on "..component or "", "\n")
-        if step.run then
-            ostools.call(step.run, "&")
+    end
+    
+    --run experiment
+    while not apocalypse do
+        hexameter.respond(0)
+    end
+    
+    --stop "ferry"
+    for s,step in ipairs(charon.ferry or {}) do --TODO: reverse that list before shutting down components!
+        if step.halt and not step.recycled and not (environment.bootup and step.recycle) then
+            step.halt = step.halt(there, step.address)
+            if step.halt then
+                ostools.call(step.halt, "&")
+            end
         end
     end
-end
-
-while not apocalypse do
-    hexameter.respond(0)
-end
-
-for s,step in ipairs(charon.ferry or {}) do --TODO: reverse that list before shutting down components!
-    if step.halt and not step.recycled and not (environment.bootup and step.recycle) then
-        step.halt = step.halt(there, step.address)
-        if step.halt then
-            ostools.call(step.halt, "&")
-        end
+    
+    --when in server mode, wait for conclusion on what do do next
+    while continue and not revive do
+        hexameter.respond(0)
     end
+    revive = false
+    
+    firstrun = false
 end
 
 

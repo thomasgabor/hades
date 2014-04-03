@@ -27,7 +27,7 @@ function call(...)
             for i,item in ipairs(parameter) do
                 callstring = callstring..item.." "
             end
-        else
+        elseif parameter then
             callstring = callstring..parameter.." "
         end
     end

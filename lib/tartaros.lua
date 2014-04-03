@@ -5,7 +5,7 @@ local environment = {}
 local world, metaworld
 
 
--- local functions
+-- local functions --TODO: use the luatools for these!
 
 local function deepcopy(table)
     if type(table) == "table" then

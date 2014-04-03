@@ -4,6 +4,7 @@ package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
 require "hexameter"
 require "serialize"
 require "ostools"
+require "luatools"
 local show = serialize.presentation
 
 
@@ -28,18 +29,26 @@ local environment = {
         or parameters[2],
     hexameter =
         parameters.hexameter
-        or parameters.hex,
+        or parameters.hex
+        or {},
+    tartaros =
+        parameters.tartaros
+        or parameters.tar
+        or {},
     construction =
         tonumber(parameters.construction)
         or parameters.C and 1
-        or 0
+        or 0,
+    servermode = parameters.S or false
 }
 
-
 local clock = 0
-local apocalypse = false
 local next = {}
 local subscriptions = {}
+
+local apocalypse = false
+local conclusion = false
+local revive = false
 
 local time = function ()
     local runresults = {}
@@ -187,12 +196,24 @@ local time = function ()
             end
             return response
         end
+        if space == "termination" then
+            for i,item in ipairs(parameter) do
+                revive = false
+                conclusion = true
+            end
+            table.insert(response, {reviving=revive})
+            return response
+        end
+        if space == "untermination" then
+            for i,item in ipairs(parameter) do
+                revive = true
+                conclusion = true
+            end
+            table.insert(response, {reviving=revive})
+            return response
+        end
         return nil --making this explicit here
     end
-end
-
-for key,val in pairs(environment.hexameter) do
-    print(key, val)
 end
 
 if environment.realm then
@@ -220,8 +241,9 @@ end
 --TODO: Add correctness check for world definition, i.e.
 --      - "sensors" and "motors" field match the data structure, contain only one of each "type"
 --      - all parts from "using" do actually exist
+--      - thing.name equals index for thing in world
 
-
+local initialworld = {}
 for t,thing in pairs(world) do
     thing.sensors = thing.sensors or {}
     thing.motors = thing.motors or {}
@@ -232,71 +254,117 @@ for t,thing in pairs(world) do
     if not (type(thing.time) == "table") then
         thing.time = {thing.time}
     end
+    initialworld[t] = {
+        sensors = luatools.shallowcopy(thing.sensors),
+        motors = luatools.shallowcopy(thing.motors),
+        state = luatools.deepcopy(thing.state),
+        time = luatools.shallowcopy(thing.time),
+        tick = luatools.shallowcopy(thing.tick),
+        tocked = luatools.shallowcopy(thing.tocked)
+    }
 end
 
 
 
 hexameter.init(me, time, nil, nil, environment.hexameter)
-io.write("::  Hades running. Please exit with Ctrl+C.\n")
+if environment.servermode then
+    io.write("::  Hades running in server mode. Please exit with Ctrl+C.\n")
+else
+    io.write("::  Hades running. Please exit with Ctrl+C.\n")
+end
 
-
-while not apocalypse do
-    hexameter.respond(0)
-    while environment.construction > 0 do
+local firstrun = true
+while firstrun or revive do
+    clock = 0
+    apocalypse = false
+    next = {}
+    while not apocalypse do
         hexameter.respond(0)
-    end
-    --print("**  current friends:", serialize.literal(hexameter.friends())) --command-line option to turn this on?
-    local alltocked = true
-    local status = "**  [tock status] "
-    for t,thing in pairs(world) do
-        if not (thing.tocked == auto) then
-          alltocked = alltocked and (thing.tocked > 0)
-          status = status.."    "..t..": "..((thing.tocked > 0) and "tocked ("..thing.tocked..")" or "not tocked")
+        while environment.construction > 0 do
+            hexameter.respond(0)
         end
-    end
-    status = status.."\n"
-    io.write(status)
-    if alltocked then
-        clock = clock + 1
-        io.write("\n\n\n..  Starting discrete time period #"..clock.."...\n")
-        io.write("..  .......................................\n")
+        local alltocked = true
+        local status = "**  [tock status] "
         for t,thing in pairs(world) do
-            for p,process in pairs(thing.time) do
-                if type(process) == "table" then
-                    process.run(thing, world, clock)
-                elseif type(process) == "function" then
-                    process(thing, world, clock)
+            if not (thing.tocked == auto) then
+              alltocked = alltocked and (thing.tocked > 0)
+              status = status.."    "..t..": "..((thing.tocked > 0) and "tocked ("..thing.tocked..")" or "not tocked")
+            end
+        end
+        status = status.."\n"
+        io.write(status)
+        if alltocked then
+            clock = clock + 1
+            io.write("\n\n\n..  Starting discrete time period #"..clock.."...\n")
+            io.write("..  .......................................\n")
+            for t,thing in pairs(world) do
+                for p,process in pairs(thing.time) do
+                    if type(process) == "table" then
+                        process.run(thing, world, clock)
+                    elseif type(process) == "function" then
+                        process(thing, world, clock)
+                    end
                 end
             end
-        end
-        for a,action in ipairs(next) do
-            action()
-        end
-        for t,thing in pairs(world) do
-            if not (thing.tocked == auto or thing.tocked == "auto") then
-                thing.tocked = thing.tocked - 1
+            for a,action in ipairs(next) do
+                action()
             end
-            io.write("    state of "..t.."\n")
-            io.write("      "..(thing.print and thing.print(thing) or serialize.presentation(thing.state)).."\n")
-        end
-        io.write("..  .......................................\n\n")
-        next = {}
-        if not apocalypse then
             for t,thing in pairs(world) do
-                for address,space in pairs(thing.tick) do
-                    if space then --TODO: check if body is not tocked for a longer time, thus probably not wanting to be ticked
+                if not (thing.tocked == auto or thing.tocked == "auto") then
+                    thing.tocked = thing.tocked - 1
+                end
+                io.write("    state of "..t.."\n")
+                io.write("      "..(thing.print and thing.print(thing) or serialize.presentation(thing.state)).."\n")
+            end
+            io.write("..  .......................................\n\n")
+            next = {}
+            if not apocalypse then
+                for t,thing in pairs(world) do
+                    for address,space in pairs(thing.tick) do
+                        if space then --TODO: check if body is not tocked for a longer time, thus probably not wanting to be ticked
+                            hexameter.put(address, space, {{period = clock}})
+                        end
+                    end
+                end
+                for address,space in pairs(subscriptions.clock or {}) do
+                    if space then
                         hexameter.put(address, space, {{period = clock}})
                     end
                 end
             end
-            for address,space in pairs(subscriptions.clock or {}) do
+        end
+    end
+    if environment.servermode then
+        for i,initialthing in pairs(initialworld) do
+            for name,value in pairs(initialthing) do
+                world[i][name] = luatools.deepcopy(value)
+            end
+        end
+        io.write("**  HADES simulation finished, waiting for conclusion...\n")
+        while not conclusion do
+            hexameter.respond(0)
+        end
+        conclusion = false
+        if revive then
+            io.write("**  Conclusion was \"unterminate\", restarting HADES simulation.\n\n")
+            for address,space in pairs(subscriptions.revivification or {}) do
                 if space then
-                    hexameter.put(address, space, {{period = clock}})
+                    print("**  Notifying", address, " on ", space)
+                    hexameter.put(address, space, {{}})
+                end
+            end
+        else
+            io.write("**  Conclusion was \"terminate\", shutting down HADES...\n")
+            for address,space in pairs(subscriptions.termination or {}) do
+                if space then
+                    hexameter.put(address, space, {{}})
                 end
             end
         end
     end
+    firstrun = false
 end
+
 
 hexameter.converse() --until zmq.LINGER works with the lua bindings, this is an acceptable solution
 --hexameter.term()
