@@ -1,38 +1,12 @@
+local luatools = require "luatools"
+
 local T = {}
 
 local inhabitants = {}
 local environment = {}
+local parameters = {}
 local world, metaworld
 
-
--- local functions --TODO: use the luatools for these!
-
-local function deepcopy(table)
-    if type(table) == "table" then
-        local newtable = {}
-        for key,val in pairs(table) do
-            newtable[key] = deepcopy(val)
-        end
-        return newtable
-    else
-        return table
-    end
-end
-
-local function update(base, changes, recursive)
-    local newtable = deepcopy(base)
-    for key,val in pairs(changes or {}) do
-        if recursive and type(val) == "table" and type(newtable[key]) == "table" then
-            newtable[key] = update(newtable[key], val, true)
-        else
-            newtable[key] = val
-        end
-    end
-    return newtable
-end
-
-
---tartaros interfae
 
 function T.write(content)
     if content then
@@ -45,18 +19,26 @@ function T.write(content)
 end
 
 function T.writeln(content)
-    write(content)
+    T.write(content)
     io.write("\n")
 end
 
 T.print = T.writeln
+
+function T.setup(parameterbase)
+    parameters = (type(parameterbase) == "table") and parameterbase or {}
+end
+
+function T.env(name)
+    return environment[name]
+end
 
 function T.init(worldbase, metaworldbase, environmentbase)
     world = worldbase or {}
     metaworld = metaworldbase or {}
     metaworld.tartaros = metaworld.tartaros or {}
     setmetatable(world, metaworld)
-    environment = environmentbase or {}
+    environment = luatools.shallowupdate(environmentbase or {}, parameters)
     return world, metaworld
 end
 
@@ -66,20 +48,21 @@ end
 
 function T.load(name, importing, params)
     if not inhabitants[name] then
+        metaworld.tartaros[name] = {}
         local inhabitant
         if type(name) == "string" then
             inhabitant = require(name)
         elseif type(name) == "table" then
             inhabitant = name
         elseif type(name) == "function" then
-            inhabitant = name(T, world, update(environment, params))
+            inhabitant = name(T, world, luatools.shallowupdate(environment, params))
         else
             return false
         end
         inhabitants[name] = inhabitant
         T[name] = inhabitant
         if type(inhabitant.init) == "function" then
-            inhabitant.init(T, world, update(environment, params))
+            inhabitant.init(T, world, luatools.shallowupdate(environment, params))
         end
         if importing then
             for key,val in pairs(inhabitant) do
@@ -123,13 +106,38 @@ function T.unload(name, imported, params)
         end
         T[name] = nil
         inhabitants[name] = nil
+        metaworld.tartaros[name] = nil
         return true
     end
     return false
 end
 
 function T.clone(original, name, changes)
-    world[name] = update(world[original], changes, true)
+    world[name] = luatools.deepupdate(world[original], changes)
+end
+
+local originalstates = {}
+
+function T.save()
+    for name,inhabitant in pairs(inhabitants) do
+        if inhabitant.save then
+            originalstates[name] = inhabitant.save(luatools.deepcopy(metaworld.tartaros[name].state))
+        else
+            print("%%% ", name)
+            originalstates[name] = luatools.deepcopy(metaworld.tartaros[name].state)
+        end
+    end
+end
+
+function T.revive()
+    for name,inhabitant in pairs(inhabitants) do
+        if inhabitant.revive then
+            metaworld.tartaros[name].state = inhabitant.revive(luatools.deepcopy(originalstates[name]))
+        else
+            print("&&& ", name)
+            metaworld.tartaros[name].state = luatools.deepcopy(originalstates[name])
+        end
+    end
 end
 
 return T

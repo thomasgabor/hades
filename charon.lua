@@ -1,10 +1,11 @@
 -- CHARON
 here = string.match(arg[0], "^.*/") or "./"
 package.path = here.."?.lua;"..here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
-require "hexameter"
-require "serialize"
-require "ostools"
-local show = serialize.presentation
+local hexameter = require "hexameter"
+local serialize = require "serialize"
+local ostools   = require "ostools"
+local tartaros  = require "tartaros"
+local show      = serialize.presentation
 
 --using globals here, it, there, world, metaworld, charon
 
@@ -25,15 +26,16 @@ it= parameters.world and ostools.expand(parameters.world)
 --print(show(parameters))
 --print(show(environment.addresses))
 
-
+--load world file
 io.write("::  Loading "..it.."...\n")
+tartaros.setup(parameters.tartaros or parameters.tar)
 world = dofile(it)
 metaworld = getmetatable(world or {})
 charon = metaworld.charon or {}
 there = ostools.dir(it)
 
 
--- set up environment
+--set up environment
 environment = {
     world = it,
     bodies = parameters.bodies or "...",
@@ -97,7 +99,6 @@ environment = {
     tartaros =
         parameters.tartaros
         or parameters.tar
-        or charon.tartaros
         or nil,
     dryrun = parameters.T or false,
     bootup = parameters.U or false,
@@ -109,7 +110,6 @@ environment = {
 if type(environment.hades) == "string" then
     environment.hades = {name=environment.hades}
 end
-
 
 local addresspool = environment.addresses
 local usedaddresses = {}
@@ -252,7 +252,7 @@ local time = function ()
                     for r,resultsensor in pairs(resultsensors) do
                         measured = true
                         local measurements = hexameter.ask("qry", realm, "sensors", {resultsensor.query})
-                        hexameter.tell("put", realm, "results", {name=resultsensor.name, value=measurements})
+                        hexameter.tell("put", realm, "results", {{name=resultsensor.name, value=measurements}})
                         io.write("        ", resultsensor.name, ": ")
                         if resultlog then resultlog:write(resultsensor.name, ",\t") end
                         for m,measurement in pairs(measurements) do
@@ -329,6 +329,7 @@ ostools.call("lua",
     it,
     environment.servermode and "-S",
     ostools.group("hexameter", environment.hexameter),
+    ostools.group("tartaros", environment.tartaros),
     ostools.group(nil, environment.hades),
     "> "..environment.hadeslog,
     "&"
@@ -370,6 +371,7 @@ while firstrun or continue do
                 it,
                 "--prefix", "["..actualaddress.."]",
                 ostools.group("hexameter", environment.hexameter),
+                ostools.group("tartaros", environment.tartaros),
                 ostools.group(nil, environment.psyche),
                 "> "..environment.psychelog,
                 "&"

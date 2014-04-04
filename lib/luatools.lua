@@ -55,7 +55,7 @@ function deepupdate(...)
             if type(base[key]) == "table" and type(val) == "table" then
                 base[key] = deepupdate(base[key], val)
             else
-                base[key] = val
+                base[key] = deepcopy(val)
             end
         end
     end

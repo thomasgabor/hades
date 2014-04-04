@@ -1,11 +1,12 @@
 --HADES a discrete environment simulator
 here = string.match(arg[0], "^.*/") or "./"
 package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
-require "hexameter"
-require "serialize"
-require "ostools"
-require "luatools"
-local show = serialize.presentation
+local hexameter = require "hexameter"
+local serialize = require "serialize"
+local ostools   = require "ostools"
+local luatools  = require "luatools"
+local tartaros  = require "tartaros"
+local show      = serialize.presentation
 
 
 local me
@@ -41,6 +42,8 @@ local environment = {
         or 0,
     servermode = parameters.S or false
 }
+
+tartaros.setup(environment.tartaros)
 
 local clock = 0
 local next = {}
@@ -190,8 +193,12 @@ local time = function ()
                     end
                 end
             elseif msgtype == "qry" then
-                if item.name and runresults[item.name] then
-                    table.insert(response, runresults[item.name] or {})
+                for i,item in ipairs(parameter) do
+                    if item.name and runresults[item.name] then
+                        table.insert(response, runresults[item.name] or {})
+                    else
+                        table.insert(response, {name="all", results=runresults})
+                    end
                 end
             end
             return response
@@ -263,6 +270,7 @@ for t,thing in pairs(world) do
         tocked = luatools.shallowcopy(thing.tocked)
     }
 end
+tartaros.save()
 
 
 
@@ -335,11 +343,6 @@ while firstrun or revive do
         end
     end
     if environment.servermode then
-        for i,initialthing in pairs(initialworld) do
-            for name,value in pairs(initialthing) do
-                world[i][name] = luatools.deepcopy(value)
-            end
-        end
         io.write("**  HADES simulation finished, waiting for conclusion...\n")
         while not conclusion do
             hexameter.respond(0)
@@ -349,7 +352,7 @@ while firstrun or revive do
             io.write("**  Conclusion was \"unterminate\", restarting HADES simulation.\n\n")
             for address,space in pairs(subscriptions.revivification or {}) do
                 if space then
-                    print("**  Notifying", address, " on ", space)
+                    --io.write("**  Notifying ", address, " on ", space, "\n")
                     hexameter.put(address, space, {{}})
                 end
             end
@@ -361,6 +364,12 @@ while firstrun or revive do
                 end
             end
         end
+        for i,initialthing in pairs(initialworld) do
+            for name,value in pairs(initialthing) do
+                world[i][name] = luatools.deepcopy(value)
+            end
+        end
+        tartaros.revive()
     end
     firstrun = false
 end

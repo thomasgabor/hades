@@ -1,5 +1,9 @@
 --tartaros plug-in for static environment specification (and other recurring tasks)
 
+--FOR NOW, this code is experimental, please use sisyphos-grid or sisyphos-graph depending on your needs
+
+local luatools = require "luatools"
+
 local S = {}
 
 local world
@@ -13,27 +17,18 @@ function S.init(tartaros, worldtable)
     statics = metaworld.tartaros.sisyphos.statics
 end
 
-function S.stuff()
-    return statics
+
+-- grid world ----------------------------------------------------------------------------------------------------------
+local S.gridworld = {}
+
+function S.gridworld.new(name)
+    local gridworld = luatools.shallowcopy(S.gridworld)
+    gridworld.statics = {}
+    statics[name or "gridworld"] = gridworld.statics
+    return gridworld
 end
 
-function S.place(object, x, y)
-    statics[x] = statics[x] or {}
-    statics[x][y] = statics[x][y] or {}
-    table.insert(statics[x][y], object)
-end
-
-function S.placemultiple(object, xs, ys)
-    if not (type(xs) == "table") then xs = {xs} end
-    if not (type(ys) == "table") then ys = {ys} end
-    for _,x in pairs(xs) do
-        for _,y in pairs(ys) do
-            S.place(object, x, y)
-        end
-    end
-end
-
-function S.range(start, stop, step)
+function S.gridworld.range(start, stop, step)
     step = step or 1
     local result = {}
     local i = start
@@ -44,10 +39,30 @@ function S.range(start, stop, step)
     return result
 end
 
-function S.thereis(x, y, class)
-    if not statics[x] then return false end
-    if not statics[x][y] then return false end
-    for _, object in pairs(statics[x][y]) do
+function S.gridworld.stuff(self)
+    return self
+end
+
+function S.gridworld.place(self, object, x, y)
+    self.statics[x] = self.statics[x] or {}
+    self.statics[x][y] = self.statics[x][y] or {}
+    table.insert(self.statics[x][y], object)
+end
+
+function S.gridworld.placemultiple(self, object, xs, ys)
+    if not (type(xs) == "table") then xs = {xs} end
+    if not (type(ys) == "table") then ys = {ys} end
+    for _,x in pairs(xs) do
+        for _,y in pairs(ys) do
+            self:place(object, x, y)
+        end
+    end
+end
+
+function S.gridworld.thereis(self, x, y, class)
+    if not self.statics[x] then return false end
+    if not self.statics[x][y] then return false end
+    for _, object in pairs(self.statics[x][y]) do
         if object.class == class then
             return true
         end
@@ -55,10 +70,10 @@ function S.thereis(x, y, class)
     return false
 end
 
-function S.accessible(x, y)
-    if not statics[x] then return true end
-    if not statics[x][y] then return true end
-    for _, object in pairs(statics[x][y]) do
+function S.gridworld.accessible(self, x, y)
+    if not self.statics[x] then return true end
+    if not self.statics[x][y] then return true end
+    for _, object in pairs(self.statics[x][y]) do
         if not object.accessible then
             return false
         end
@@ -66,32 +81,45 @@ function S.accessible(x, y)
     return true
 end
 
-function S.space()
+function S.gridworld.space()
     return {
         class = "space",
         accessible = true
     }
 end
 
-function S.nest()
+function S.gridworld.nest()
     return {
         class = "nest",
         accessible = true
     }
 end
 
-function S.resource()
+function S.gridworld.resource()
     return {
         class = "resource",
         accessible = true
     }
 end
 
-function S.wall()
+function S.gridworld.wall()
     return {
         class = "wall",
         accessible = false
     }
+end
+
+
+
+-- graph world ---------------------------------------------------------------------------------------------------------
+
+local S.graphworld = {}
+
+function S.graphworld.new(name)
+    local graphworld = luatools.shallowcopy(S.graphworld)
+    graphworld.statics = {nodes={}, edges={}}
+    statics[name or "graphworld"] = graphworld.statics
+    return graphworld
 end
 
 return S

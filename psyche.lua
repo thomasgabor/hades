@@ -1,10 +1,13 @@
 -- PSYCHE system character emulation
 here = string.match(arg[0], "^.*/") or "./"
 package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
-require "hexameter"
-require "serialize"
-require "ostools"
-local show = serialize.presentation
+local hexameter = require "hexameter"
+local serialize = require "serialize"
+local ostools   = require "ostools"
+local tartaros  = require "tartaros"
+local write     = tartaros.write
+local writeln   = tartaros.writeln
+local show      = serialize.presentation
 
 local possess = true
 local avoid = false
@@ -50,22 +53,14 @@ local environment = {
     tartaros =
         parameters.tartaros
         or parameters.tar
+        or {}
 }
 
-local function write(content)
-    if content then
-        if environment.prefix then
-            io.write(environment.prefix, "  ", content)
-        else
-            io.write(content)
-        end
-    end
+if environment.prefix and (type(environment.tartaros) == "table") and not environment.tartaros.prefix then
+    environment.tartaros.prefix  = environment.prefix
 end
 
-local function writeln(content)
-    write(content)
-    io.write("\n")
-end
+tartaros.setup(environment.tartaros)
 
 if environment.realm then
     realm = environment.realm
