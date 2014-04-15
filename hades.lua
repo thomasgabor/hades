@@ -117,6 +117,7 @@ local time = function ()
                     subscriptions[item.to][item.name or author] = item.space or "hades.subscription"
                 end
             end
+            return parameter
         end
         if (msgtype == "qry" or msgtype == "get") and string.match(space, "^sensors") then
             for i,item in ipairs(parameter) do
@@ -337,6 +338,16 @@ while firstrun or revive do
                 for address,space in pairs(subscriptions.clock or {}) do
                     if space then
                         hexameter.put(address, space, {{period = clock}})
+                    end
+                end
+                for address,space in pairs(subscriptions.state or {}) do
+                    if space then
+                        local state = {}
+                        for name,body in pairs(world) do
+                            state[name] = body.state or {}
+                        end
+                        --print("&&  ", address, space)
+                        hexameter.put(address, space, {{period = clock, state = state}})
                     end
                 end
             end
