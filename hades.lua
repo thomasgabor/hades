@@ -48,6 +48,7 @@ tartaros.setup(environment.tartaros)
 local clock = 0
 local next = {}
 local subscriptions = {}
+local server = {state = {type="booting"}, runcount=0, tick={}, tocked={}}
 
 local apocalypse = false
 local conclusion = false
@@ -57,6 +58,15 @@ local time = function ()
     local runresults = {}
     return function(msgtype, author, space, parameter)
         local response = {}
+        if (msgtype == "qry" or msgtype == "get") and space == "server.state" then
+            return {server.state}
+        end
+        if (msgtype == "qry" or msgtype == "get") and space == "server.runcount" then
+            return {{runcount=server.runcount}}
+        end
+        if (msgtype == "qry" or msgtype == "get") and space == "server.mode" then
+            return {{mode=(environment.servermode and "server" or "ephemeral")}}
+        end
         if (msgtype == "qry" or msgtype == "get") and string.match(space, "^state") then
             local state = {}
             for name,body in pairs(world) do
@@ -165,6 +175,18 @@ local time = function ()
                 if not (world[item.body].tocked == auto or world[item.body].tocked == "auto") then
                     world[item.body].tocked = item.duration or 1
                 end
+            end
+        end
+        if msgtype == "put" and string.match(space, "^server.ticks") then
+            for i,item in ipairs(parameter) do
+                server.tick = server.tick or {}
+                server.tick[item.id or author] = item.space or "hades.ticks"
+            end
+        end
+        if msgtype == "put" and string.match(space, "^server.tocks") then --maybe implement command to set to auto
+            for i,item in ipairs(parameter) do
+                server.tocked = server.tocked or {}
+                server.tocked[item.id or author] = item.duration or 1
             end
         end
         if msgtype == "put" and string.match(space, "^construction$") then
@@ -290,8 +312,10 @@ while firstrun or revive do
     while not apocalypse do
         hexameter.respond(0)
         while environment.construction > 0 do
+            server.state = {type="constructing", steps=environment.construction}
             hexameter.respond(0)
         end
+        server.state = {type="running"}
         local alltocked = true
         local status = "**  [tock status] "
         for t,thing in pairs(world) do
@@ -299,6 +323,10 @@ while firstrun or revive do
               alltocked = alltocked and (thing.tocked > 0)
               status = status.."    "..t..": "..((thing.tocked > 0) and "tocked ("..thing.tocked..")" or "not tocked")
             end
+        end
+        for id,_ in pairs(server.tick) do
+            alltocked = alltocked and (server.tocked[id] or 0 > 0)
+            status = status.."    *"..id.."*: "..((server.tocked[id] or 0 > 0) and "tocked ("..thing.tocked..")" or "not tocked")
         end
         status = status.."\n"
         io.write(status)
@@ -325,6 +353,9 @@ while firstrun or revive do
                 io.write("    state of "..t.."\n")
                 io.write("      "..(thing.print and thing.print(thing) or serialize.presentation(thing.state)).."\n")
             end
+            for id,_ in pairs(server.tocked) do
+                server.tocked[id] = server.tocked[id] - 1
+            end
             io.write("..  .......................................\n\n")
             next = {}
             if not apocalypse then
@@ -333,6 +364,11 @@ while firstrun or revive do
                         if space then --TODO: check if body is not tocked for a longer time, thus probably not wanting to be ticked
                             hexameter.put(address, space, {{period = clock}})
                         end
+                    end
+                end
+                for id,space in pairs(server.tick) do
+                    if space then
+                        hexameter.put(id, space, {{period = clock}})
                     end
                 end
                 for address,space in pairs(subscriptions.clock or {}) do
@@ -356,6 +392,7 @@ while firstrun or revive do
     if environment.servermode then
         io.write("**  HADES simulation finished, waiting for conclusion...\n")
         while not conclusion do
+            server.state = {type="concluding"}
             hexameter.respond(0)
         end
         conclusion = false
@@ -382,6 +419,7 @@ while firstrun or revive do
         end
         tartaros.revive()
     end
+    server.runcount = server.runcount + 1;
     firstrun = false
 end
 
