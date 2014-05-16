@@ -50,6 +50,19 @@ local next = {}
 local subscriptions = {}
 local server = {state = {type="booting"}, runcount=0, tick={}, tocked={}}
 
+local function update(newstate)
+    if newstate.type then
+        if not (newstate.type == server.state.type) then
+            for address,space in pairs(subscriptions["server.state"] or {}) do
+                if space then
+                    hexameter.put(address, space, {{state = newstate}})
+                end
+            end
+        end
+        server.state = newstate
+    end
+end
+
 local apocalypse = false
 local conclusion = false
 local revive = false
@@ -177,17 +190,29 @@ local time = function ()
                 end
             end
         end
-        if msgtype == "put" and string.match(space, "^server.ticks") then
-            for i,item in ipairs(parameter) do
+        if string.match(space, "^server.ticks") then
+            if msgtype == "put" then
                 server.tick = server.tick or {}
-                server.tick[item.id or author] = item.space or "hades.ticks"
+                for i,item in ipairs(parameter) do
+                    server.tick[item.id or author] = item.space or "hades.ticks"
+                end
+                return response
+            end
+            if msgtype == "get" then
+                server.tick = server.tick or {}
+                for i,item in ipairs(parameter) do
+                    table.insert(response, {id=item.id or author, space=server.tick[item.id or author]})
+                    server.tick[item.id or author] = nil
+                end
+                return response
             end
         end
         if msgtype == "put" and string.match(space, "^server.tocks") then --maybe implement command to set to auto
             for i,item in ipairs(parameter) do
                 server.tocked = server.tocked or {}
-                server.tocked[item.id or author] = item.duration or 1
+                server.tocked[item.id or author] = tonumber(item.duration) or 1
             end
+            return response;
         end
         if msgtype == "put" and string.match(space, "^construction$") then
             for i,item in ipairs(parameter) do
@@ -312,10 +337,10 @@ while firstrun or revive do
     while not apocalypse do
         hexameter.respond(0)
         while environment.construction > 0 do
-            server.state = {type="constructing", steps=environment.construction}
+            update{type="constructing", steps=environment.construction}
             hexameter.respond(0)
         end
-        server.state = {type="running"}
+        update{type="running"}
         local alltocked = true
         local status = "**  [tock status] "
         for t,thing in pairs(world) do
@@ -325,8 +350,8 @@ while firstrun or revive do
             end
         end
         for id,_ in pairs(server.tick) do
-            alltocked = alltocked and (server.tocked[id] or 0 > 0)
-            status = status.."    *"..id.."*: "..((server.tocked[id] or 0 > 0) and "tocked ("..thing.tocked..")" or "not tocked")
+            alltocked = alltocked and ((server.tocked[id] or 0) > 0)
+            status = status.."    *"..id.."*: "..(((server.tocked[id] or 0) > 0) and "tocked ("..server.tocked[id]..")" or "not tocked")
         end
         status = status.."\n"
         io.write(status)
@@ -392,7 +417,7 @@ while firstrun or revive do
     if environment.servermode then
         io.write("**  HADES simulation finished, waiting for conclusion...\n")
         while not conclusion do
-            server.state = {type="concluding"}
+            update{type="concluding"}
             hexameter.respond(0)
         end
         conclusion = false
