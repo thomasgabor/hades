@@ -48,7 +48,7 @@ tartaros.setup(environment.tartaros)
 local clock = 0
 local next = {}
 local subscriptions = {}
-local server = {state = {type="booting"}, runcount=0, tick={}, tocked={}}
+local server = {state = {type="booting"}, runcount=1, tick={}, tocked={}}
 
 local function update(newstate)
     if newstate.type then
@@ -211,6 +211,26 @@ local time = function ()
             for i,item in ipairs(parameter) do
                 server.tocked = server.tocked or {}
                 server.tocked[item.id or author] = tonumber(item.duration) or 1
+            end
+            return response;
+        end
+        if (msgtype == "qry" or msgtype == "get") and space == "server.untocked" then
+            for i,item in ipairs(parameter) do
+                local things = {}
+                for t,thing in pairs(world) do
+                    if not (thing.tocked == auto) then
+                        if not (thing.tocked > 0) then
+                            things[thing.name] = thing.tick
+                        end
+                    end
+                end
+                local components = {}
+                for id,_ in pairs(server.tick) do
+                    if not (server.tocked[id] > 0) then
+                        components[id] = server.tick[id]
+                    end
+                end
+                table.insert(response, {world=things, server=components})
             end
             return response;
         end
