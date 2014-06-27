@@ -185,9 +185,15 @@ function S.allhomes()
 end
 
 local labels = {}
+local names = {}
 
 function S.label(x, y, name)
-    labels[name] = {x = x, y = y}
+    if graph.nodes[x] and graph.nodes[x][y] then
+        labels[name] = {x = x, y = y}
+        names[x] = names[x] or {}
+        names[x][y] = names[x][y] or {}
+        table.insert(names[x][y], name)
+    end
 end
 
 function S._label(item)
@@ -203,6 +209,68 @@ end
 
 function S._lookup(item)
     return S.lookup(item.name)
+end
+
+
+function S.check(x, y)
+    if names[x] and names[x][y] then
+        return names[x][y]
+    end
+    return {}
+end
+
+function S.process(nodes, edges, homes)
+    if type(nodes) == "table" and type(edges) == "table" and homes then
+        for _,node in pairs(nodes) do
+            S.makenode(node.x, node.y, node.cost, node.objects)
+            if node.id then
+                S.label(node.x, node.y, node.id)
+            end
+            for _,label in pairs(node.labels or {}) do
+                S.label(node.x, node.y, label)
+            end
+        end
+        for _,edge in pairs(edges) do
+            S.makeedge(edge.from, edge.to, edge.cost)
+        end
+        for _,home in pairs(homes) do
+            S.makehome(home.x, home.y)
+        end
+    end
+end
+
+function S._process(item)
+    return S.process(item.nodes, item.edges, item.homes)
+end
+
+function S.produce()
+    local nodesdata = {}
+    local edgesdata = {}
+    local homesdata = {}
+    for _,line in pairs(graph.nodes) do
+        for _,node in pairs(line) do
+            local newnode = node
+            newnode.id = S.lookup()
+            table.insert(nodesdata, node)
+        end
+    end
+    for _,line in pairs(graph.edges) do
+        for _,line in pairs(line) do
+            for _,line in pairs(line) do
+                for _,edge in pairs(line) do
+                    table.insert(edgesdata, edge)
+                end
+            end
+        end
+    end
+    for x,line in pairs(homes) do
+        for y,status in pairs(line) do
+            if status then
+                table.insert(homesdata, {x=x, y=y})
+            end
+        end
+    end
+    return {nodes=nodesdata, edges=edgesdata, homes=homesdata}
 end
 
 return S

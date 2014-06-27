@@ -410,6 +410,12 @@ while firstrun or continue do
             if step.run then
                 ostools.call(step.run, "&")
             end
+            if step.afterrun then
+                step.afterrun()
+            end
+        end
+        if step.setup then
+            step.setup(step.recycled, component)
         end
     end
     
@@ -424,6 +430,9 @@ while firstrun or continue do
             step.halt = step.halt(there, step.address)
             if step.halt then
                 ostools.call(step.halt, "&")
+            end
+            if step.afterhalt then
+                step.afterhalt()
             end
         end
     end
