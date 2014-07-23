@@ -46,4 +46,48 @@ function T.can(me, action)
     return false
 end
 
+function T.combine(parts, newtype)
+    local combinedtype, combinedclass
+    for p,part in ipairs(parts) do
+        combinedclass = combinedclass or part.class
+        if not (combinedclass == part.class) then
+            return nil
+        end
+        combinedtype = combinedtype and (combinedtype .. "+" .. part.type) or part.type
+    end
+    return {
+        type = newtype or combinedtype,
+        class = combinedclass,
+        run = (combinedclass == "motor") and function (me, world, control)
+            for m,motor in ipairs(parts) do
+                me = motor.run(me, world, control)
+            end
+            return me
+        end,
+        measure = (combinedclass == "sensor") and function (me, world, control)
+            local result = {}
+            for s,sensor in ipairs(parts) do
+                result[s] = sensor.measure(me, world, control)
+            end
+            return result
+        end
+    }
+end
+
+function T.proxy(part, origin, suffix)
+    suffix = suffix or "proxy"
+    return {
+        type = part.type .. "-" .. suffix,
+        class = part.class,
+        run = (part.class == "motor") and function (me, world, control)
+            local id = hexameter.ask("put", origin, "motors", {{body = me.name, type = part.name, control = control}})
+            local status = hexameter.ask("get", origin, "finished", {{id = id}})
+            while not (status[1] and (status[1].id == id)) do
+                status = hexameter.ask("get", origin, "finished", {{id = id}})
+            end
+            return me
+        end
+    }
+end
+
 return T
