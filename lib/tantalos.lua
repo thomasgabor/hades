@@ -80,11 +80,11 @@ function T.proxy(part, origin, suffix)
         type = part.type .. "-" .. suffix,
         class = part.class,
         run = (part.class == "motor") and function (me, world, control)
-            local id = hexameter.ask("put", origin, "motors", {{body = me.name, type = part.name, control = control}})
-            local status = hexameter.ask("get", origin, "finished", {{id = id}})
-            while not (status[1] and (status[1].id == id)) do
-                status = hexameter.ask("get", origin, "finished", {{id = id}})
-            end
+            local id = hexameter.ask("put", origin, "motors", {{body = me.name, type = part.type, control = control}})
+            --local status = hexameter.ask("get", origin, "finished", {{id = id}})
+            --while not (status[1] and (status[1].id == id)) do
+            --    status = hexameter.ask("get", origin, "finished", {{id = id}})
+            --end
             return me
         end
     }

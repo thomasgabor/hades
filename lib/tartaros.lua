@@ -114,6 +114,7 @@ end
 
 function T.clone(original, name, changes)
     world[name] = luatools.deepupdate(world[original], changes)
+    world[name].name = name
 end
 
 local originalstates = {}
@@ -123,7 +124,7 @@ function T.save()
         if inhabitant.save then
             originalstates[name] = inhabitant.save(luatools.deepcopy(metaworld.tartaros[name].state))
         else
-            print("%%% ", name)
+            --print("%%% ", name)
             originalstates[name] = luatools.deepcopy(metaworld.tartaros[name].state)
         end
     end
@@ -134,7 +135,7 @@ function T.revive()
         if inhabitant.revive then
             metaworld.tartaros[name].state = inhabitant.revive(luatools.deepcopy(originalstates[name]))
         else
-            print("&&& ", name)
+            --print("&&& ", name)
             metaworld.tartaros[name].state = luatools.deepcopy(originalstates[name])
         end
     end
