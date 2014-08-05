@@ -48,7 +48,7 @@ tartaros.setup(environment.tartaros)
 local clock = 0
 local next = {}
 local subscriptions = {}
-local server = {state = {type="booting"}, runcount=1, tick={}, tocked={}}
+local server = {state = {type="booting"}, runcount=1, tick={}, tocked={}, effect={tick={}, tocked={}}}
 
 local function update(newstate)
     if newstate.type then
@@ -234,6 +234,30 @@ local time = function ()
             end
             return response;
         end
+        if string.match(space, "^effect.ticks") then
+            if msgtype == "put" then
+                server.effect.tick = server.effect.tick or {}
+                for i,item in ipairs(parameter) do
+                    server.effect.tick[item.id or author] = item.space or "hades.effect.ticks"
+                end
+                return response
+            end
+            if msgtype == "get" then
+                server.effect.tick = server.effect.tick or {}
+                for i,item in ipairs(parameter) do
+                    table.insert(response, {id=item.id or author, space=server.effect.tick[item.id or author]})
+                    server.effect.tick[item.id or author] = nil
+                end
+                return response
+            end
+        end
+        if msgtype == "put" and string.match(space, "^effect.tocks") then --maybe implement command to set to auto
+            for i,item in ipairs(parameter) do
+                server.effect.tocked = server.effect.tocked or {}
+                server.effect.tocked[item.id or author] = tonumber(item.duration) or 1
+            end
+            return response;
+        end
         if msgtype == "put" and string.match(space, "^construction$") then
             for i,item in ipairs(parameter) do
                 environment.construction = environment.construction - (item.steps or 1)
@@ -391,6 +415,22 @@ while firstrun or revive do
             for a,action in ipairs(next) do
                 action()
             end
+            for id,_ in pairs(server.effect.tocked) do
+                server.effect.tocked[id] = server.effect.tocked[id] - 1
+            end
+            for id,space in pairs(server.effect.tick) do
+                hexameter.tell("put", id, space, {{period = clock}})
+            end
+            local effecttocked
+            repeat
+                effecttocked = true
+                for id,_ in pairs(server.effect.tick) do
+                    effecttocked = effecttocked and ((server.effect.tocked[id] or 0) > 0)
+                end
+                if not effecttocked then
+                    hexameter.respond(0)
+                end
+            until effecttocked
             for t,thing in pairs(world) do
                 if not (thing.tocked == auto or thing.tocked == "auto") then
                     thing.tocked = thing.tocked - 1

@@ -65,11 +65,8 @@ function T.combine(parts, newtype)
             return me
         end,
         measure = (combinedclass == "sensor") and function (me, world, control)
-            local result = {}
-            for s,sensor in ipairs(parts) do
-                result[s] = sensor.measure(me, world, control)
-            end
-            return result
+            return parts[1].measure(me, world, control)
+            --TODO: expand this ina meaningful and flexible way
         end
     }
 end
@@ -80,15 +77,47 @@ function T.proxy(part, origin, suffix)
         type = part.type .. "-" .. suffix,
         class = part.class,
         run = (part.class == "motor") and function (me, world, control)
+            hexameter.process("put", origin, "effect.ticks", {{}})
+            hexameter.tell("put", origin, "subscriptions", {{to="finished", space="effect.tocks"}})
             local id = hexameter.ask("put", origin, "motors", {{body = me.name, type = part.type, control = control}})[1].id
             --TODO: This polling solution is totally ugly but works for now
-            local status = hexameter.ask("get", origin, "finished", {{id = id}})
-            while not (status[1] and (status[1].id == id)) do
-                status = hexameter.ask("get", origin, "finished", {{id = id}})
+            if false and id then
+                local status = hexameter.ask("get", origin, "finished", {{id = id}})
+                while not (status[1] and (status[1].id == id)) do
+                    status = hexameter.ask("get", origin, "finished", {{id = id}})
+                end
             end
             return me
+        end,
+        measure = (part.class == "sensor") and function (me, world, control)
+            local id = hexameter.ask("qry", origin, "sensors", {{body = me.name, type = part.type, control = control}})[1].id
+            --TODO: This polling solution is totally ugly but works for now
+            if id then
+                local status = hexameter.ask("get", origin, "finished", {{id = id}})
+                while not (status[1] and (status[1].id == id)) do
+                    status = hexameter.ask("get", origin, "finished", {{id = id}})
+                end
+                return status[1]
+            end
+            return {}
         end
     }
+end
+
+function T.mirror(body, targetaddress)
+    local target = targetaddress --TODO: add more flexibility here
+    if target then
+        local newmotors = {}
+        local newsensors = {}
+        for m,motor in ipairs(body.motors) do
+            newmotors[m] = T.combine({motor, T.proxy(motor, target)}, motor.type)
+        end
+        for s,sensor in ipairs(body.sensors) do
+            newsensors[s] = T.combine({sensor, T.proxy(sensor, target)}, sensor.type)
+        end
+        body.motors = newmotors
+        body.sensors = newsensors
+    end
 end
 
 return T
