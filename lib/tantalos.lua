@@ -90,16 +90,8 @@ function T.proxy(part, origin, suffix)
             return me
         end,
         measure = (part.class == "sensor") and function (me, world, control)
-            local id = hexameter.ask("qry", origin, "sensors", {{body = me.name, type = part.type, control = control}})[1].id
-            --TODO: This polling solution is totally ugly but works for now
-            if id then
-                local status = hexameter.ask("get", origin, "finished", {{id = id}})
-                while not (status[1] and (status[1].id == id)) do
-                    status = hexameter.ask("get", origin, "finished", {{id = id}})
-                end
-                return status[1]
-            end
-            return {}
+            local result = hexameter.ask("qry", origin, "sensors", {{body = me.name, type = part.type, control = control}})
+            return result
         end
     }
 end
@@ -113,7 +105,7 @@ function T.mirror(body, targetaddress)
             newmotors[m] = T.combine({motor, T.proxy(motor, target)}, motor.type)
         end
         for s,sensor in ipairs(body.sensors) do
-            newsensors[s] = T.combine({sensor, T.proxy(sensor, target)}, sensor.type)
+            newsensors[s] = T.combine({T.proxy(sensor, target), sensor}, sensor.type)
         end
         body.motors = newmotors
         body.sensors = newsensors
