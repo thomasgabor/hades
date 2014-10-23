@@ -1,5 +1,7 @@
 --tartaros plug-in for sensor/motor-simulation (and other deceptive phenomena)
 
+local serialize = require "serialize"
+
 local T = {}
 
 local world
@@ -91,7 +93,8 @@ function T.proxy(part, origin, suffix)
         end,
         measure = (part.class == "sensor") and function (me, world, control)
             local result = hexameter.ask("qry", origin, "sensors", {{body = me.name, type = part.type, control = control}})
-            return result
+            --error(serialize.literal(result))
+            return result[1]
         end
     }
 end
