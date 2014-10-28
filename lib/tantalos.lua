@@ -92,9 +92,9 @@ function T.proxy(part, origin, suffix)
             return me
         end,
         measure = (part.class == "sensor") and function (me, world, control)
-            local result = hexameter.ask("qry", origin, "sensors", {{body = me.name, type = part.type, control = control}})
+            local result = hexameter.ask("qry", origin, "sensors", {{body = me.name, type = part.type, control = control}})[1].value
             --error(serialize.literal(result))
-            return result[1]
+            return result
         end
     }
 end
