@@ -5,11 +5,18 @@ GHOST based on a HADES world file.
 
 
 
+TYPICAL EXECUTION:
+
+lua charon.lua worldfile.lua
+lua charon.lua <world definition file> [<parameters...>]
+
+
+
 COMMAND LINE OPTIONS:
 
 -h
 --help please
-Print this.
+Print this manual.
 
 --world
 Specify world file, can also be specified as unnamed parameter.
@@ -32,10 +39,10 @@ Like addresses, but only takes number which it assumes to be ports on "localhost
 both are specified
 
 --hades:name
-Specific port for CHARON to run HADES at (if left out, one is chosen from the address pool defined by --addresses)
+Specific address for CHARON to run HADES at (if left out, one is chosen from the address pool defined by --addresses)
 
 --name
-Specific port for CHARON to run on (if left out, one is chosen from the address pool defined by --addresses)
+Specific address for CHARON to run on (if left out, one is chosen from the address pool defined by --addresses)
 
 --doomsday
 CHARON will end the execution of the ensemble on given time period. Specify 0 to never terminate the ensemble this way.
@@ -58,10 +65,10 @@ a resultlog is specified, you can also specifiy a run name, which will cause CHA
 --ghost
 Only start GHOST for the given body name, don't do anything else.
 
---hexameter:* [i.e. --hexameter:socketcache 42]
+--hexameter:* [e.g. --hexameter:socketcache 42]
 Set options to be passed on to the Hexameter protocol running on CHARON, HADES and PSYCHE.
 
---hades:* [i.e. --hades:construction 1]
+--hades:* [e.g. --hades:construction 1]
 Set options to be passed on to HADES.
 
 -S

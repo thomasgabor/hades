@@ -12,7 +12,8 @@ local show      = serialize.presentation
 local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
 
 if parameters.H or parameters.h or parameters.help then
-    ostools.call("cat", here.."help/charon.txt")
+    local helpfile = assert(io.open(here.."help/charon.txt", "r"))
+    io.write(helpfile:read("*all"))
     io.write("\n")
     os.exit()
 end
