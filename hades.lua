@@ -388,7 +388,7 @@ while firstrun or revive do
         local alltocked = true
         local status = "**  [tock status] "
         for t,thing in pairs(world) do
-            if not (thing.tocked == auto) then
+            if not (thing.tocked == auto or thing.tocked == "auto") then
               alltocked = alltocked and (thing.tocked > 0)
               status = status.."    "..t..": "..((thing.tocked > 0) and "tocked ("..thing.tocked..")" or "not tocked")
             end
