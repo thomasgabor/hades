@@ -11,7 +11,7 @@ function S.edition()
     return "sisyphos_graph"
 end
 
-function S.init(tartaros, worldtable)
+function S.load(tartaros, worldtable)
     world = worldtable
     local metaworld = getmetatable(world)
     metaworld.tartaros.sisyphos_graph.state = metaworld.tartaros.sisyphos_graph.state or {nodes={}, edges={}}

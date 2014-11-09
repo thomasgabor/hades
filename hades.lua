@@ -362,6 +362,7 @@ for t,thing in pairs(world) do
         tocked = luatools.shallowcopy(thing.tocked)
     }
 end
+tartaros.init()
 tartaros.save()
 
 

@@ -46,6 +46,16 @@ function usrerr(message, state)
     os.exit()
 end
 
+local function insertdeep(base, key, value)
+    local group, name = string.match(key, "^([a-zA-Z0-9%-]+):([a-zA-Z0-9%-:]*)$")
+    if group then
+        base[group] = base[group] or {}
+        insertdeep(base[group], name, value)
+    else
+        base[key] = value
+    end
+end
+
 function parametrize(arguments, defaults, errorhandler)
     errorhandler = errorhandler or function(a,argument,message) return true end
     if not arguments[0] then
@@ -89,6 +99,9 @@ function parametrize(arguments, defaults, errorhandler)
         if not errorhandler(#arguments, munchedby, "value expected but not given") then return nil end
     end
     for key,value in pairs(parameters) do
+        insertdeep(parameters, key, value)
+    end
+    --[[for key,value in pairs(parameters) do
         local group, name = string.match(key, "^([a-zA-Z0-9%-]+):([a-zA-Z0-9%-:]*)$")
         if group then
             if not parameters[group] then
@@ -98,17 +111,31 @@ function parametrize(arguments, defaults, errorhandler)
                 parameters[group][name] = value
             end
         end
-    end
+    end]]
+
+
     return parameters
+end
+
+local function insertflat(base, key, val)
+    if type(val) == "table" then
+        for name,value in pairs(val) do
+            insertflat(base, key..":"..name, value)
+        end
+    else
+        table.insert(base, "--"..key.."="..val)
+    end
 end
 
 function group(name, parameters)
     local arguments = {}
     for key,val in pairs(parameters or {}) do
         if name then
-            table.insert(arguments, "--"..name..":"..key.."="..val)
+            insertflat(arguments, name..":"..key, val)
+            --table.insert(arguments, "--"..name..":"..key.."="..val)
         else
-            table.insert(arguments, "--"..key.."="..val)
+            insertflat(arguments, key, val)
+            --table.insert(arguments, "--"..key.."="..val)
         end
     end
     return arguments

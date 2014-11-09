@@ -9,7 +9,7 @@ local S = {}
 local world
 local statics = {}
 
-function S.init(tartaros, worldtable)
+function S.load(tartaros, worldtable)
     world = worldtable
     local metaworld = getmetatable(world)
     metaworld.tartaros.sisyphos = metaworld.tartaros.sisyphos or {}

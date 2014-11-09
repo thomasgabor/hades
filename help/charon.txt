@@ -71,6 +71,9 @@ Set options to be passed on to the Hexameter protocol running on CHARON, HADES a
 --hades:* [e.g. --hades:construction 1]
 Set options to be passed on to HADES.
 
+--tartaros:* [e.g. --tartaros:tantalos:projectall localhost:55655]
+Set options to be passed on to TARTAROS.
+
 -S
 Server mode: Keep CHARON and HADES running until they are terminated by network message. Recommended if you use a
 HADES frontend like ORPHEUS+EURYDIKE.

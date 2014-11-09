@@ -4,11 +4,41 @@ local serialize = require "serialize"
 
 local T = {}
 
+local tartaros
 local world
+local enviroment
+local tantalos
 
-function T.init(tartaros, worldtable)
+function T.load(tartarostable, worldtable, environmenttable)
+    tartaros = tartarostable
     world = worldtable
+    environment = environmenttable or {}
+    tantalos = environment.tantalos
+        or environment.tan
+        or {}
 end
+
+function T.init()
+    if tantalos.projectall then        
+        for name,body in pairs(world) do
+            T.project(body, tantalos.projectall)
+        end
+    elseif type(tantalos.projections) == "table" then
+        for name,target in pairs(tantalos.projections) do
+            T.project(world[name], target)
+        end
+    end
+    if tantalos.motormirrorall then
+        for name,body in pairs(world) do
+            T.motormirror(body, tantalos.motormirrorall)
+        end
+    elseif type(tantalos.motormirrors) == "table" then
+        for name,target in pairs(tantalos.motormirrors) do
+            T.motormirror(world[name], target)
+        end
+    end
+end
+
 
 function T.sensor(me, type, control)
     for _,sensor in pairs(me.sensors) do

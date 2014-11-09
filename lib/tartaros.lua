@@ -33,7 +33,7 @@ function T.env(name)
     return environment[name]
 end
 
-function T.init(worldbase, metaworldbase, environmentbase)
+function T.construct(worldbase, metaworldbase, environmentbase)
     world = worldbase or {}
     metaworld = metaworldbase or {}
     metaworld.tartaros = metaworld.tartaros or {}
@@ -43,7 +43,23 @@ function T.init(worldbase, metaworldbase, environmentbase)
 end
 
 function T.create(params)
-    return T.init({}, {}, params)
+    return T.construct({}, {}, params)
+end
+
+function T.init()
+    for name,inhabitant in pairs(inhabitants) do
+        if inhabitant.init then
+            inhabitant.init(T, world)
+        end
+    end
+end
+
+function T.halt()
+    for name,inhabitant in pairs(inhabitants) do
+        if inhabitant.halt then
+            inhabitant.halt(T, world)
+        end
+    end
 end
 
 function T.load(name, importing, params)
@@ -61,12 +77,12 @@ function T.load(name, importing, params)
         end
         inhabitants[name] = inhabitant
         T[name] = inhabitant
-        if type(inhabitant.init) == "function" then
-            inhabitant.init(T, world, luatools.shallowupdate(environment, params))
+        if type(inhabitant.load) == "function" then
+            inhabitant.load(T, world, luatools.shallowupdate(environment, params))
         end
         if importing then
             for key,val in pairs(inhabitant) do
-                if not (key == "init") and not (key == "halt") then
+                if (not (key == "load")) and (not (key == "init")) and (not (key == "halt")) then
                     T[key] = val
                 end
             end
