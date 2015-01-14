@@ -65,6 +65,16 @@ function S._getnode(item)
     return S.getnode(item.x, item.y)
 end
 
+function S.dumpnodes()
+    local dump = ""
+    for x, rest in pairs(graph.nodes) do
+       for y, node in pairs(rest) do
+           dump = dump .. "(" .. x .. "," .. y .. ")"
+       end 
+    end
+    return dump
+end
+
 function S.getedges(x, y)
     if type(x) == "table" then
         x, y = x.x, x.y
@@ -184,6 +194,18 @@ function S.allhomes()
     return positions
 end
 
+function S.getahome()
+    for x,entry in pairs(homes) do
+        for y,slot in pairs(entry) do
+            if slot then
+                local home = S.getnode(x, y)
+                return home
+            end
+        end
+    end
+    return nil
+end
+
 local labels = {}
 local names = {}
 
@@ -220,7 +242,7 @@ function S.check(x, y)
 end
 
 function S.process(nodes, edges, homes)
-    if type(nodes) == "table" and type(edges) == "table" and homes then
+    if (type(nodes) == "table") and (type(edges) == "table") and (type(homes) == "table") then
         for _,node in pairs(nodes) do
             S.makenode(node.x, node.y, node.cost, node.objects)
             if node.id then

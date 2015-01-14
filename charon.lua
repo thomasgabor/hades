@@ -332,7 +332,7 @@ ostools.call("lua",
     ostools.group("hexameter", environment.hexameter),
     ostools.group("tartaros", environment.tartaros),
     ostools.group(nil, environment.hades),
-    "> "..environment.hadeslog,
+    not (environment.hadeslog == "STDOUT") and "> "..environment.hadeslog,
     "&"
 )
 hexameter.ask("qry", realm, "net.life", {{answer=42}}) --wait for hades to be online
@@ -374,7 +374,7 @@ while firstrun or continue do
                 ostools.group("hexameter", environment.hexameter),
                 ostools.group("tartaros", environment.tartaros),
                 ostools.group(nil, environment.psyche),
-                "> "..environment.psychelog,
+                not (environment.psychelog == "STDOUT") and "> "..environment.psychelog,
                 "&"
             )
         end
