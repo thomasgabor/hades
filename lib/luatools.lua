@@ -37,6 +37,7 @@ function deepcopy(original)
 end
 
 function shallowupdate(...)
+    local arg = {...}
     local updates = arg
     local base = {}
     for _,update in ipairs(updates) do
@@ -48,6 +49,7 @@ function shallowupdate(...)
 end
 
 function deepupdate(...)
+    local arg = {...}
     local updates = arg
     local base = {}
     for _,update in ipairs(updates) do

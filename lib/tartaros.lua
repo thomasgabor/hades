@@ -99,6 +99,7 @@ function T.publish(name, procedure)
 end
 
 function T.publishloaded(name, ...)
+    local arg = {...}
     local added = {}
     for _,member in pairs(arg or inhabitants[name] or {}) do
         if inhabitants[name][member] then

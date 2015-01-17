@@ -13,7 +13,7 @@ local tonumber = tonumber
 module(...)
 
 function expand(path)
-    return string.gsub(path, "\~", os.getenv("HOME"))
+    return string.gsub(path, "~", os.getenv("HOME"))
 end
 
 function dir(path)
@@ -21,6 +21,7 @@ function dir(path)
 end
 
 function call(...)
+    local arg = {...}
     local callstring = ""
     for _,parameter in ipairs(arg) do
         if type(parameter) == "table" then
