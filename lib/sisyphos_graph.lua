@@ -27,8 +27,8 @@ function S.stuff()
     return graph
 end
 
-function S.makenode(x, y, cost, objects)
-    local newnode = {x=x, y=y, cost=cost or 0, objects=objects or {}}
+function S.makenode(x, y, cost, objects, id)
+    local newnode = {x=x, y=y, cost=cost or 0, objects=objects or {}, id=id}
     graph.nodes[x] = graph.nodes[x] or {}
     graph.nodes[x][y] = newnode
     return newnode
@@ -166,7 +166,7 @@ function S.makehome(x, y)
 end
 
 function S._makehome(item)
-    return makehome(item.x, item.y)
+    return S.makehome(item.x, item.y)
 end
 
 function S.ishome(x, y)
@@ -222,6 +222,18 @@ function S._label(item)
     return S.label(item.x, item.y, item.name)
 end
 
+function S.labelall(labeling)
+    for _,node in pairs(graph.nodes) do
+        S.label(node.x, node.y, labeling(node))
+    end
+end
+
+function S.labelallby(property)
+    for _,node in pairs(graph.nodes) do
+        S.label(node.x, node.y, node[property])
+    end
+end
+
 function S.lookup(name)
     if labels[name] and labels[name].x and labels[name].y and graph.nodes[labels[name].x] then
         return graph.nodes[labels[name].x][labels[name].y]
@@ -242,9 +254,9 @@ function S.check(x, y)
 end
 
 function S.process(nodes, edges, homes)
-    if (type(nodes) == "table") and (type(edges) == "table") and (type(homes) == "table") then
+    if (type(nodes) == "table") then
         for _,node in pairs(nodes) do
-            S.makenode(node.x, node.y, node.cost, node.objects)
+            S.makenode(node.x, node.y, node.cost, node.objects, node.id)
             if node.id then
                 S.label(node.x, node.y, node.id)
             end
@@ -252,10 +264,10 @@ function S.process(nodes, edges, homes)
                 S.label(node.x, node.y, label)
             end
         end
-        for _,edge in pairs(edges) do
+        for _,edge in pairs(edges or {}) do
             S.makeedge(edge.from, edge.to, edge.cost)
         end
-        for _,home in pairs(homes) do
+        for _,home in pairs(homes or {}) do
             S.makehome(home.x, home.y)
         end
     end
