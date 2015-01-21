@@ -106,12 +106,12 @@ if parameters[4] then
         for name,body in pairs(world) do
             if (allsouls and not (souls[name] == avoid)) or (souls[name] == possess) then
                 if type(body.psyche) == "function" then --behavior is specified in world file directly
-                    characters[name] = body.psyche(realm, me)
+                    characters[name] = body.psyche(realm, me, name)
                 elseif type(body.psyche) == "string" then --behavior by body-specific behavior program file
-                    characters[name] = dofile(there..body.psyche)(realm, me)
+                    characters[name] = dofile(there..body.psyche)(realm, me, name)
                     --io.write(name.." specified by "..world[name].psyche.."\n")
                 else
-                    characters[name] = defaultbehavior(realm, me)
+                    characters[name] = defaultbehavior(realm, me, name)
                 end
             end
         end
