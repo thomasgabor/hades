@@ -36,6 +36,9 @@ local environment = {
         parameters.tartaros
         or parameters.tar
         or {},
+    note =
+        parameters.note
+        or {},
     construction =
         tonumber(parameters.construction)
         or parameters.C and 1
@@ -399,7 +402,9 @@ while firstrun or revive do
             status = status.."    *"..id.."*: "..(((server.tocked[id] or 0) > 0) and "tocked ("..server.tocked[id]..")" or "not tocked")
         end
         status = status.."\n"
-        io.write(status)
+        if not (environment.note.tocks == "no") then
+            io.write(status)
+        end
         if alltocked then
             clock = clock + 1
             io.write("\n\n\n..  Starting discrete time period #"..clock.."...\n")
