@@ -19,7 +19,7 @@ end
 
 
 -- grid world ----------------------------------------------------------------------------------------------------------
-local S.gridworld = {}
+S.gridworld = {}
 
 function S.gridworld.new(name)
     local gridworld = luatools.shallowcopy(S.gridworld)
@@ -113,7 +113,7 @@ end
 
 -- graph world ---------------------------------------------------------------------------------------------------------
 
-local S.graphworld = {}
+S.graphworld = {}
 
 function S.graphworld.new(name)
     local graphworld = luatools.shallowcopy(S.graphworld)
