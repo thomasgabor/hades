@@ -1,4 +1,10 @@
 --HADES a discrete environment simulator
+
+--[[
+local dbgconnection = require "debugger"
+dbgconnection("127.0.0.1", 10000, "hadeskey")
+--]]--
+
 here = string.match(arg[0], "^.*/") or "./"
 package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
 local hexameter = require "hexameter"
@@ -7,7 +13,6 @@ local ostools   = require "ostools"
 local luatools  = require "luatools"
 local tartaros  = require "tartaros"
 local show      = serialize.presentation
-
 
 local me
 

@@ -1,4 +1,10 @@
 -- PSYCHE system character emulation
+
+--[[
+local dbgconnection = require "debugger"
+dbgconnection("127.0.0.1", 10000, "psychekey")
+--]]--
+
 here = string.match(arg[0], "^.*/") or "./"
 package.path = here.."hexameter/?.lua;"..here.."lib/?.lua;"..package.path
 local hexameter = require "hexameter"
