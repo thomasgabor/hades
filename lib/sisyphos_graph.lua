@@ -253,6 +253,11 @@ function S.check(x, y)
     return {}
 end
 
+function S.delete()
+    homes = {}
+    graph = {nodes={}, edges={}}
+end
+
 function S.process(nodes, edges, homes)
     if (type(nodes) == "table") then
         for _,node in pairs(nodes) do
@@ -265,7 +270,7 @@ function S.process(nodes, edges, homes)
             end
         end
         for _,edge in pairs(edges or {}) do
-            S.makeedge(edge.from, edge.to, edge.cost)
+            S.makeedge(edge.from, edge.to, -edge.reward)
         end
         for _,home in pairs(homes or {}) do
             S.makehome(home.x, home.y)

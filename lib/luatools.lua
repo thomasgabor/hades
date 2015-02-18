@@ -24,11 +24,16 @@ function shallowcopy(original)
     end
 end
 
-function deepcopy(original)
+function deepcopy(original, alreadycopied)
+    alreadycopied = alreadycopied or {}
+    if alreadycopied[original] then
+        return alreadycopied[original]
+    end
     if type(original) == "table" then
         local copy = {}
+        alreadycopied[original] = copy
         for key,val in pairs(original) do
-            copy[key] = deepcopy(val)
+            copy[key] = deepcopy(val, alreadycopied)
         end
         return copy
     else
