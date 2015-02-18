@@ -7,8 +7,6 @@ local ostools   = require "ostools"
 local tartaros  = require "tartaros"
 local show      = serialize.presentation
 
-local luaexe    = "luajit"
-
 --using globals here, it, there, world, metaworld, charon
 
 local parameters = ostools.parametrize(arg, {}, function(a,argument,message) print(a, argument, message) end)
@@ -103,6 +101,10 @@ environment = {
         parameters.tartaros
         or parameters.tar
         or nil,
+    lua =
+        parameters.lua
+        or parameters.interpreter
+        or "lua",
     dryrun = parameters.T or false,
     bootup = parameters.U or false,
     shutdown = parameters.D or false,
@@ -177,7 +179,7 @@ resultsensors = ostools.elect(environment.results, resultsensors, function(_, se
 if environment.ghost then
     local ghostaddress = address()
     io.write("::  Only starting GHOST on ", ghostaddress, "\n")
-    ostools.call(luaexe, here.."hexameter/ghost.lua", ghostaddress, here.."lib/hades.ghost", "--", "enter hades "..environment.ghost)
+    ostools.call(environment.lua, here.."hexameter/ghost.lua", ghostaddress, here.."lib/hades.ghost", "--", "enter hades "..environment.ghost)
     os.exit()
 end
 
@@ -326,7 +328,7 @@ end
 
 --start HADES
 io.write("::  Starting HADES on "..realm..(environment.servermode and " in server mode " or "").."\n")
-ostools.call(luaexe,
+ostools.call(environment.lua,
     here.."hades.lua",
     realm,
     it,
@@ -366,7 +368,7 @@ while firstrun or continue do
         end
         if actualaddress then
             io.write("::  Starting PSYCHE for "..psychebodies.." on "..actualaddress.."\n")
-            ostools.call(luaexe,
+            ostools.call(environment.lua,
                 here.."psyche.lua",
                 realm,
                 actualaddress,

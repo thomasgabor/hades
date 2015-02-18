@@ -62,6 +62,9 @@ Copy result output into the given file. When not specified, results will only be
 a resultlog is specified, you can also specifiy a run name, which will cause CHARON to append to the resultlog file
 (instead of writing it anew) and prepend the run name as a heading for the results to be saved.
 
+--lua [default: lua]
+Start dependent Lua programs (Psyche, HADES, GHOST) using the given Lua interpreter, e.g. "luajit".
+
 --ghost
 Only start GHOST for the given body name, don't do anything else.
 
