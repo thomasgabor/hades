@@ -458,7 +458,7 @@ while firstrun or revive do
                 for t,thing in pairs(world) do
                     for address,space in pairs(thing.tick) do
                         if space then --TODO: check if body is not tocked for a longer time, thus probably not wanting to be ticked
-                            hexameter.put(address, space, {{period = clock}})
+                            hexameter.put(address, space, {{period = clock, body = thing.name}})
                         end
                     end
                 end
